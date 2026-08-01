@@ -1,0 +1,9 @@
+*.blg
+*.etl
+*.zip
+Analyzer/
+bin/
+obj/
+TestOutput/
+*.user
+*.suo
