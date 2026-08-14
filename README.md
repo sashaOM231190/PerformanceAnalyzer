@@ -17,7 +17,6 @@ This version supports:
 ## Contents
 
 - [Prerequisites](#prerequisites)
-- [Files](#files)
 - [Capture commands](#capture-commands)
 - [Analyzer commands](#analyzer-commands)
 - [Build commands](#build-commands)
@@ -43,19 +42,6 @@ Required:
 - `diskspd.exe` beside `Capture-StorageDiagnostics.ps1` for `-SetBaseline`.
 
 The dashboard listens only on `127.0.0.1`.
-
-## Files
-
-| File | Purpose |
-|---|---|
-| `PerformanceAnalyzer.exe` | Recommended analyzer entry point. |
-| `Capture-StorageDiagnostics.ps1` | Normal and DiskSpd baseline capture. |
-| `Show-PerfCounterDashboard.ps1` | Parser, correlation engine, local API, and dashboard. |
-| `BlgAnalyzerHost.cs` | CLI host and compiled Storport streaming aggregator. |
-| `Build-BlgAnalyzer.ps1` | Embeds the dashboard script and builds the executable. |
-| `diskspd.exe` | DiskSpd executable used by `-SetBaseline`. |
-| `Architecture.md` | Architecture review document and diagrams. |
-| `Architecture.pdf` | PDF version of the architecture review. |
 
 ## Capture commands
 
