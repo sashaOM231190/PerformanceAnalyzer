@@ -1,244 +1,650 @@
-# PerformanceAnalyzer
+# PerformanceAnalyzer Storage Diagnostics
 
-PerformanceAnalyzer is a Windows performance-analysis dashboard for Performance
-Monitor `.blg` files. It reads the counters stored in a capture and presents
-interactive charts, synchronized cursor readings, zoom controls, findings,
-threshold guidance, and derived disk calculations in a local browser.
+PerformanceAnalyzer correlates Windows PerfMon, Storport ETW, process/file I/O
+ETW, disk topology, and DiskSpd XML in one local browser dashboard.
 
-The dashboard processes captures locally and binds its web server only to
-`127.0.0.1`. BLG data is not uploaded by the application.
+This version supports:
 
-It can also decode a `Microsoft-Windows-StorPort` ETL and expose synchronized
-one-second Storport IOPS, throughput, latency, and error graphs. Every SCSI
-opcode present in the trace receives command-specific counters; known opcodes
-use names such as READ, WRITE, INQUIRY, REPORT LUNS, UNMAP/TRIM, and
-SYNCHRONIZE CACHE, while unknown opcodes retain their hexadecimal value. An
-optional `DiskMapping.json` correlates Port/Bus/Target/LUN with PerfMon disk
-instances.
+- One-second PerfMon analysis.
+- Storport request throughput, IOPS, latency, status, and SCSI commands.
+- Exact Storport latency bands by Total, Read, Write, Other, and opcode.
+- Automatic identification of the SCSI command with maximum request latency.
+- Process-to-volume top-five contributor analysis.
+- DiskSpd baseline capture, import, target mapping, and comparison.
+- LogicalDisk, PhysicalDisk, Storport, CPU average, and CPU peak comparison.
+- Processed ETL caching for large captures.
 
-## Features
+## Contents
 
-- CPU, physical and logical disk, memory, process, network, SMB, and other
-  recorded counter categories
-- Searchable counter and instance selection
-- Multiple vertically stacked charts with synchronized time and cursor
-- Mouse-wheel zoom, selected-time range controls, and overview navigator
-- Automatic findings, spike detection, threshold bands, and zoom links
-- Human-readable units and copyable cursor readings
-- Selected-range cumulative read/write totals
-- Disk calculations such as throughput, IOPS, transfer size, queue validation,
-  read/write mix, weighted latency, busy-time checks, activity percentage, and
-  burst ratio
-- Hover help explaining derived values in plain language
-- Standalone `PerformanceAnalyzer.exe` with the dashboard script embedded
+- [Prerequisites](#prerequisites)
+- [Files](#files)
+- [Capture commands](#capture-commands)
+- [Analyzer commands](#analyzer-commands)
+- [Build commands](#build-commands)
+- [DiskSpd baseline behavior](#diskspd-baseline-behavior)
+- [Dashboard areas](#dashboard-areas)
+- [Comparison calculations](#comparison-calculations)
+- [Capture artifacts](#capture-artifacts)
+- [Troubleshooting](#troubleshooting)
+- [Final release recommendations](#final-release-recommendations)
+- [Architecture brief](#architecture-brief)
 
-## Requirements
+## Prerequisites
 
-- Windows
-- Windows PowerShell 5.1
-- .NET Framework 4.x
-- Windows Performance Toolkit (`xperf.exe`) for Storport ETL analysis
-- A Performance Monitor `.blg` capture
-- A modern web browser
+Run capture commands from an elevated Windows PowerShell window.
 
-PowerShell 7 can start the script-based version, but BLG processing is
-automatically delegated to Windows PowerShell 5.1 because `Import-Counter`
-objects do not behave consistently when deserialized across editions.
+Required:
 
-## Run the standalone EXE
+- Windows PowerShell 5.1.
+- Administrator rights for capture.
+- Windows `logman.exe`.
+- Windows Performance Toolkit with `xperf.exe` for ETL analysis.
+- A modern browser.
+- `diskspd.exe` beside `Capture-StorageDiagnostics.ps1` for `-SetBaseline`.
 
-Capture folder auto-discovery:
+The dashboard listens only on `127.0.0.1`.
 
-```powershell
-.\PerformanceAnalyzer.exe "E:\Path\StorageCapture-20260808-103655"
-```
-
-The folder may contain a BLG, Storport ETL, or both. The analyzer selects the
-newest `.blg`, prefers `Storport.etl`, and uses `DiskMapping.json` when present.
-It starts in BLG-only, ETL-only, combined, or correlated mode according to the
-files that are available.
-
-```powershell
-.\PerformanceAnalyzer.exe "E:\Path\Capture.blg"
-```
-
-Storport only:
-
-```powershell
-.\PerformanceAnalyzer.exe --etl "E:\Path\Storport.etl"
-```
-
-Combined without mapping:
-
-```powershell
-.\PerformanceAnalyzer.exe `
-  --blg "E:\Path\Storage.blg" `
-  --etl "E:\Path\Storport.etl"
-```
-
-Combined and correlated:
-
-```powershell
-.\PerformanceAnalyzer.exe `
-  --blg "E:\Path\Storage.blg" `
-  --etl "E:\Path\Storport.etl" `
-  --mapping "E:\Path\DiskMapping.json"
-```
-
-Optional arguments:
-
-```text
---folder <path>       Auto-discover capture files in a directory.
---port <1024-65535>  Use a different local HTTP port.
---no-browser         Do not open the browser automatically.
-```
-
-You can also drag a capture folder, `.blg`, or `.etl` file onto
-`PerformanceAnalyzer.exe`. The EXE does not need the `.ps1` or `.bat` files beside it
-because the dashboard script is embedded.
-
-Press `Ctrl+C` in the console to stop the local dashboard server.
-
-## Run from source
-
-```powershell
-.\Show-PerfCounterDashboard.ps1 -InputPath "E:\Path\Capture.blg"
-```
-
-For folder auto-discovery:
-
-```powershell
-.\Show-PerfCounterDashboard.ps1 -FolderPath "E:\Path\CaptureFolder"
-```
-
-Or use the launcher:
-
-```bat
-Start-PerformanceDashboard.bat "E:\Path\Capture.blg"
-```
-
-The BAT file is only a convenience wrapper for the PowerShell source version.
-It is not used by `PerformanceAnalyzer.exe`.
-
-## Build the EXE
-
-Run from the repository directory:
-
-```powershell
-powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass `
-  -File .\Build-BlgAnalyzer.ps1
-```
-
-The build script uses the .NET Framework C# compiler and embeds
-`Show-PerfCounterDashboard.ps1` as the `BlgDashboardScript` resource in
-`PerformanceAnalyzer.exe`.
-
-Any dashboard source change requires rebuilding the EXE.
-
-## Source layout
+## Files
 
 | File | Purpose |
-| --- | --- |
-| `Show-PerfCounterDashboard.ps1` | BLG reader, local HTTP server, HTML, CSS, JavaScript, charts, findings, and calculations |
-| `BlgAnalyzerHost.cs` | Console host that validates arguments and runs the embedded dashboard through the Windows PowerShell engine |
-| `Build-BlgAnalyzer.ps1` | Reproducibly compiles the C# host and embeds the dashboard script |
-| `Start-PerformanceDashboard.bat` | Optional launcher for the external PowerShell script |
-| `PerformanceAnalyzer.exe` | Built standalone executable |
+|---|---|
+| `PerformanceAnalyzer.exe` | Recommended analyzer entry point. |
+| `Capture-StorageDiagnostics.ps1` | Normal and DiskSpd baseline capture. |
+| `Show-PerfCounterDashboard.ps1` | Parser, correlation engine, local API, and dashboard. |
+| `BlgAnalyzerHost.cs` | CLI host and compiled Storport streaming aggregator. |
+| `Build-BlgAnalyzer.ps1` | Embeds the dashboard script and builds the executable. |
+| `diskspd.exe` | DiskSpd executable used by `-SetBaseline`. |
+| `Architecture.md` | Architecture review document and diagrams. |
+| `Architecture.pdf` | PDF version of the architecture review. |
 
-## Example disk calculation
+## Capture commands
 
-If a capture contains:
-
-```text
-Avg. Disk Bytes/Read = 1,044,480 bytes/read
-Disk Reads/sec       = 7.021 reads/second
-```
-
-The estimated read throughput is:
-
-```text
-1,044,480 × 7.021 = 7,333,326 bytes/second = 6.99 MiB/second
-```
-
-The dashboard compares calculated values with direct PerfMon counters when the
-required counters for the same disk instance are loaded.
-
-## Limitations
-
-- Results are limited to counters and sample intervals recorded in the BLG.
-- A one-second capture cannot reconstruct millisecond-level I/O distributions,
-  file paths, or stack traces.
-- Standard Process and PhysicalDisk counters cannot reliably attribute a
-  process to a particular physical disk. Use ETW/WPR for exact
-  process-to-file-to-disk tracing.
-- Thresholds are diagnostic guidance rather than universal hardware limits.
-- The executable is a C# host for embedded PowerShell logic, not a native
-  rewrite of the analyzer.
-
-## Privacy and security
-
-- The server listens only on the IPv4 loopback address.
-- Captures remain on the computer running the analyzer.
-- No telemetry or external web service is used.
-- Review `Show-PerfCounterDashboard.ps1` and `BlgAnalyzerHost.cs` for the full
-  implementation.
-
-## Sample captures
-
-BLG captures are intentionally excluded from Git because they can be very
-large and may contain machine, process, and workload information. Supply your
-own capture when running the analyzer.
-
-## Architecture documentation
-
-The `docs` directory contains:
-
-- `01-HLD.md` - high-level design
-- `02-LLD.md` - low-level design
-- `03-Code-Walkthrough.md` - function-by-function implementation guide
-- `BLG-Analyzer-Architecture-Guide.pdf` - combined learning guide
-
-To rebuild the HTML and PDF:
+Change to the tool directory:
 
 ```powershell
-powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass `
-  -File .\docs\Build-Documentation.ps1
+cd E:\tool_development\BlgAnalyzerPrivate\implementing_diskSPD_baseline
 ```
 
-The documentation build uses Node.js and the locally installed Microsoft Edge.
-It does not download an additional browser or npm package.
-
-## Collect synchronized BLG and Storport traces
-
-Run the following script from an elevated Windows PowerShell window:
+### Normal diagnostic capture
 
 ```powershell
 .\Capture-StorageDiagnostics.ps1
 ```
 
-It starts one-second PerfMon and circular Storport collectors, waits while the
-issue is reproduced, then stops both collectors and creates:
+This collects:
 
-- One or more `.blg` files
-- `Storport.etl`
-- `DiskMapping.json`
-- `CaptureManifest.json`
+- PerfMon BLG.
+- Storport ETL.
+- `ProcessVolume.etl`.
+- `DiskMapping.json`.
+- `CaptureManifest.json`.
 
-The mapping records Windows disk number, matching PerfMon instances, SCSI
-Port/Bus/Target/LUN, stable disk identifiers, and partitions.
+Reproduce the issue and press Enter to stop collection.
 
-The combined analyzer supports:
+### Normal capture with a different output root
 
-- BLG-only analysis
-- Storport-only analysis
-- Side-by-side BLG and Storport analysis without mapping
-- Correlation immediately when `DiskMapping.json` is supplied
-- Attaching the mapping file later without recollecting the BLG or ETL
+```powershell
+.\Capture-StorageDiagnostics.ps1 `
+  -OutputRoot D:\StorageTraces
+```
 
-Under the **Storport** category, counters are grouped by disk or Storport port.
-Select command-specific counters such as `READ(16) [0x88] P95 Latency`,
-`WRITE(16) [0x8A] Maximum Latency`, or
-`UNMAP/TRIM [0x42] Average Latency` to identify which SCSI operation was slow.
-Discovery-only addresses are consolidated by port so commands such as REPORT
-LUNS remain visible without producing hundreds of nearly empty device groups.
+### Normal capture with a different process ETL limit
 
+Valid range: 256-8192 MiB. Default: 1024 MiB.
+
+```powershell
+.\Capture-StorageDiagnostics.ps1 `
+  -ProcessIoTraceMaxMB 2048
+```
+
+### Normal capture with both options
+
+```powershell
+.\Capture-StorageDiagnostics.ps1 `
+  -OutputRoot D:\StorageTraces `
+  -ProcessIoTraceMaxMB 2048
+```
+
+### Interactive DiskSpd baseline capture
+
+```powershell
+.\Capture-StorageDiagnostics.ps1 -SetBaseline
+```
+
+This collects:
+
+- PerfMon BLG.
+- Storport ETL.
+- DiskSpd XML.
+- Disk mapping.
+- Capture manifest.
+
+It intentionally skips `ProcessVolume.etl`.
+
+Available presets:
+
+1. Balanced random: 64 KiB, 70% read / 30% write.
+2. Random read IOPS: 4 KiB, 100% read.
+3. Sequential read throughput: 1 MiB, 100% read.
+4. Sequential write throughput: 1 MiB, 100% write.
+5. Custom DiskSpd command.
+
+For custom mode, enter a complete command when prompted:
+
+```text
+diskspd.exe -c10G -d60 -W20 -r8K -w0 -b64K -t4 -o8 -Sh -L C:\Temp\diskspd_test.dat
+```
+
+The script preserves the workload options and supplied target directory, but
+controls the temporary target filename. The example target therefore becomes:
+
+```text
+C:\Temp\DiskSpdBaseline.dat
+```
+
+The effective command and all adjustments are displayed before capture starts.
+The user must enter `Y` or `YES` to approve it. The script adds `-Rxml` when
+needed so the result is stored as `DiskSpd-baseline.xml` in the capture folder,
+and adds `-L` when needed so latency statistics are available. Custom duration,
+warmup, and cooldown values are written to the capture manifest.
+
+Custom baseline mode accepts exactly one local file target. Raw-disk and
+multi-target commands are rejected. For a multi-target test, start a normal
+capture without `-SetBaseline`, run DiskSpd separately, and press Enter after
+the test finishes.
+
+Drive input accepts `c`, `C`, or `C:`. A drive input becomes:
+
+```text
+C:\DiskSpdBaseline.dat
+```
+
+Preset baseline runtime:
+
+```text
+Warmup:     0 seconds
+Measurement: 60 seconds
+Cooldown:   0 seconds
+```
+
+New preset test files are 10 GiB and are removed after capture. Existing files
+are not removed. Preset write workloads against existing files require an
+explicit `YES` confirmation. Custom mode displays any overwrite warning with
+the final effective command and requires `Y` or `YES` before execution.
+
+### Baseline capture with a different output root
+
+```powershell
+.\Capture-StorageDiagnostics.ps1 `
+  -SetBaseline `
+  -OutputRoot D:\StorageTraces
+```
+
+### Capture script help
+
+```powershell
+Get-Help .\Capture-StorageDiagnostics.ps1 -Full
+```
+
+## Analyzer commands
+
+### Analyze a capture folder
+
+```powershell
+.\PerformanceAnalyzer.exe C:\PerfLogs\StorageCapture-20260814-195749
+```
+
+The folder form automatically discovers:
+
+- The BLG file.
+- `Storport.etl`.
+- `ProcessVolume.etl`.
+- `DiskMapping.json`.
+- `DiskSpd*.xml`.
+
+When DiskSpd XML is present, automatic process-volume analysis is skipped to
+keep baseline startup fast. Provide `--process-etl <path>` to include it.
+
+### Analyze a folder using the explicit option
+
+```powershell
+.\PerformanceAnalyzer.exe `
+  --folder C:\PerfLogs\StorageCapture-20260814-195749
+```
+
+### Analyze a BLG file
+
+```powershell
+.\PerformanceAnalyzer.exe C:\Capture\Storage.blg
+```
+
+Equivalent explicit command:
+
+```powershell
+.\PerformanceAnalyzer.exe --blg C:\Capture\Storage.blg
+```
+
+### Analyze a Storport ETL file
+
+```powershell
+.\PerformanceAnalyzer.exe --etl C:\Capture\Storport.etl
+```
+
+An ETL passed as the first positional path is treated as Storport unless its
+name is exactly `ProcessVolume.etl`.
+
+### Analyze process-to-volume I/O
+
+```powershell
+.\PerformanceAnalyzer.exe `
+  --process-etl C:\Capture\ProcessVolume.etl `
+  --mapping C:\Capture\DiskMapping.json
+```
+
+`--process-etl` requires a path; it is not a pathless switch.
+
+### Analyze BLG and Storport together
+
+```powershell
+.\PerformanceAnalyzer.exe `
+  --blg C:\Capture\Storage.blg `
+  --etl C:\Capture\Storport.etl
+```
+
+### Analyze a fully correlated capture
+
+```powershell
+.\PerformanceAnalyzer.exe `
+  --blg C:\Capture\Storage.blg `
+  --etl C:\Capture\Storport.etl `
+  --process-etl C:\Capture\ProcessVolume.etl `
+  --mapping C:\Capture\DiskMapping.json
+```
+
+### Import a separate DiskSpd XML baseline
+
+```powershell
+.\PerformanceAnalyzer.exe `
+  --blg C:\Capture\Storage.blg `
+  --etl C:\Capture\Storport.etl `
+  --mapping C:\Capture\DiskMapping.json `
+  --diskspd-xml C:\Baseline\DiskSpd-result.xml
+```
+
+The analyzer maps the DiskSpd target through `DiskMapping.json` and compares
+only common metrics for the mapped disk or volume.
+
+### Force process-volume analysis for a DiskSpd capture
+
+Use this only when `ProcessVolume.etl` exists:
+
+```powershell
+.\PerformanceAnalyzer.exe `
+  C:\PerfLogs\StorageCapture-20260814-195749 `
+  --process-etl C:\PerfLogs\StorageCapture-20260814-195749\ProcessVolume.etl
+```
+
+### Use a different dashboard port
+
+```powershell
+.\PerformanceAnalyzer.exe `
+  C:\Capture `
+  --port 8877
+```
+
+Valid ports: 1024-65535. Default: 8765.
+
+### Do not open the browser automatically
+
+```powershell
+.\PerformanceAnalyzer.exe `
+  C:\Capture `
+  --no-browser
+```
+
+### Combine port and browser options
+
+```powershell
+.\PerformanceAnalyzer.exe `
+  C:\Capture `
+  --port 8877 `
+  --no-browser
+```
+
+### Analyzer help
+
+```powershell
+.\PerformanceAnalyzer.exe --help
+```
+
+Also supported:
+
+```powershell
+.\PerformanceAnalyzer.exe -h
+.\PerformanceAnalyzer.exe /?
+```
+
+### Analyzer version
+
+```powershell
+.\PerformanceAnalyzer.exe --version
+.\PerformanceAnalyzer.exe -v
+```
+
+### Run the dashboard script directly
+
+The executable is recommended, but the embedded script can be run directly:
+
+```powershell
+.\Show-PerfCounterDashboard.ps1 `
+  -BlgPath C:\Capture\Storage.blg `
+  -EtlPath C:\Capture\Storport.etl `
+  -ProcessEtlPath C:\Capture\ProcessVolume.etl `
+  -MappingPath C:\Capture\DiskMapping.json `
+  -DiskSpdXmlPath C:\Capture\DiskSpd-baseline.xml `
+  -Port 8765
+```
+
+Folder discovery through the script:
+
+```powershell
+.\Show-PerfCounterDashboard.ps1 `
+  -FolderPath C:\Capture `
+  -NoBrowser
+```
+
+## Build commands
+
+Build the default executable:
+
+```powershell
+.\Build-BlgAnalyzer.ps1
+```
+
+Build to another path:
+
+```powershell
+.\Build-BlgAnalyzer.ps1 `
+  -OutputPath D:\Tools\PerformanceAnalyzer.exe
+```
+
+The build uses the .NET Framework C# compiler and embeds
+`Show-PerfCounterDashboard.ps1` as a resource in the executable.
+
+## DiskSpd baseline behavior
+
+DiskSpd XML supplies:
+
+- Target path.
+- Test duration.
+- Block size.
+- Random or sequential pattern.
+- Read/write ratio.
+- Threads and outstanding requests.
+- Cache mode.
+- Read, write, and total IOPS.
+- Read, write, and total throughput.
+- Average, P95, and maximum latency.
+- IOPS standard deviation.
+- Average CPU utilization.
+
+The comparison table includes:
+
+- Storport average I/O size.
+- Storport throughput.
+- Request-weighted Storport average latency.
+- Storport maximum request latency.
+- LogicalDisk and PhysicalDisk PerfMon measurements.
+- Average and peak PerfMon CPU utilization.
+
+If workload dimensions are incompatible, the tool reports 100% workload
+deviation and suppresses misleading performance deviation conclusions.
+
+## Dashboard areas
+
+### Standard PerfMon categories
+
+- CPU
+- Disk
+- Memory
+- Network
+- Process
+- SMB
+- Other
+
+### Storport
+
+- Total, read, write, and other IOPS.
+- Total, read, and write throughput.
+- Average, P95, and maximum request latency.
+- Per-SCSI-command IOPS, throughput, latency, and errors.
+- SCSI and SRB failures.
+
+### Disk Latency Bands
+
+Exact per-request Storport ranges:
+
+- Less than 5 ms.
+- 5-10 ms.
+- 10-20 ms.
+- 20-50 ms.
+- 50 ms or more.
+
+Each range can be broken down by:
+
+- Total.
+- Read.
+- Write.
+- Other.
+- Individual SCSI command and opcode.
+
+The selected-range automatic analysis identifies which SCSI command had the
+highest Storport request latency. Every automatic finding also displays the
+exact graph title and unit that produced the reading, including findings for
+graphs that were analyzed automatically but are not currently loaded.
+
+### Process Volume I/O
+
+Requires `ProcessVolume.etl` and `DiskMapping.json`.
+
+The UI lets the user:
+
+1. Select a drive or volume.
+2. Select one of its top five process contributors.
+3. Graph the contributor's IOPS, throughput, and request-size metrics.
+
+### SCSI Request Failures
+
+Shows bucketed failures with:
+
+- Opcode and command name.
+- SCSI status.
+- SRB status and flags.
+- NT status.
+- Sense key.
+- ASC and ASCQ.
+- Average and maximum failure latency.
+
+## Comparison calculations
+
+### Signed deviation
+
+Used for throughput and latency:
+
+```text
+(captured - baseline) / baseline x 100
+```
+
+### Absolute I/O-size deviation
+
+```text
+|captured - baseline| / baseline x 100
+```
+
+### Storport average latency
+
+Storport has individual request durations. The selected-range average is
+request weighted:
+
+```text
+sum(one-second average latency x requests in that second)
+---------------------------------------------------------
+total requests
+```
+
+### PerfMon average latency
+
+PerfMon exposes one cooked average-latency sample per interval. The current
+selected-range value is the arithmetic mean of those one-second samples.
+
+### CPU average
+
+Arithmetic mean of selected-range:
+
+```text
+\Processor(_Total)\% Processor Time
+```
+
+Average CPU difference is displayed in percentage points.
+
+### CPU peak
+
+The highest selected-range one-second `_Total` CPU sample. DiskSpd XML does
+not provide a peak CPU baseline, so baseline and deviation are `n/a`.
+
+## Capture artifacts
+
+| Artifact | Normal capture | `-SetBaseline` |
+|---|---:|---:|
+| PerfMon BLG | Yes | Yes |
+| `Storport.etl` | Yes | Yes |
+| `ProcessVolume.etl` | Yes | No |
+| `DiskMapping.json` | Yes | Yes |
+| `CaptureManifest.json` | Yes | Yes |
+| `DiskSpd-baseline.xml` | No | Yes |
+
+The physical BLG filename may include a timestamp because `logman` uses
+timestamped output naming.
+
+Baseline manifest schema version 5 records the original and effective DiskSpd
+commands, timing, executable product version, and executable SHA-256 hash.
+
+## Cache behavior
+
+ETL conversion and processed analysis are cached under:
+
+```text
+%TEMP%\BlgAnalyzer
+```
+
+The cache key includes source filename, length, and last-write time. Cached
+and uncached analysis produce the same dashboard data; caching only reduces
+startup time.
+
+## Troubleshooting
+
+### `xperf.exe is required`
+
+Install the Windows Performance Toolkit from the Windows ADK.
+
+### `diskspd.exe` was not found
+
+Copy the correct architecture of `diskspd.exe` beside:
+
+```text
+Capture-StorageDiagnostics.ps1
+```
+
+### Socket address already in use
+
+Use another port:
+
+```powershell
+.\PerformanceAnalyzer.exe C:\Capture --port 8877
+```
+
+Or close the existing analyzer instance.
+
+### Process-volume analysis is missing
+
+`-SetBaseline` intentionally skips `ProcessVolume.etl`. Run a normal capture:
+
+```powershell
+.\Capture-StorageDiagnostics.ps1
+```
+
+### Existing NT Kernel Logger session
+
+Normal process-volume capture uses the NT Kernel Logger. Stop the conflicting
+kernel trace before starting another normal capture.
+
+### Large ETL startup
+
+The first run converts and aggregates the ETL. Later runs load the processed
+cache. Baseline folders skip process-volume analysis unless explicitly
+requested.
+
+## Final release recommendations
+
+### Keep in the runtime package
+
+- `PerformanceAnalyzer.exe`
+- `Capture-StorageDiagnostics.ps1`
+- The matching-architecture `diskspd.exe`
+- The DiskSpd vendor EULA or license distributed with that binary
+- `README.md`
+- `Architecture.md` and `Architecture.pdf`
+
+### Keep only in the developer/source package
+
+- `Show-PerfCounterDashboard.ps1`
+- `BlgAnalyzerHost.cs`
+- `Build-BlgAnalyzer.ps1`
+- DiskSpd source trees, symbols, and architecture-specific binary folders
+
+The current workspace also contains `DiskSpd.ZIP`, `diskspd-master.zip`,
+`diskspd-master\`, and the full `DiskSpd\` distribution. They are not used at
+runtime. Exclude redundant archives, source trees, and PDB files from the
+deployable package, while retaining the applicable DiskSpd license.
+
+### Recommended future additions
+
+1. A read-only preflight command that checks elevation, XPerf, DiskSpd,
+   available ports, target-directory access, and estimated free space.
+2. Export of the selected range, automatic findings, graph identities, and
+   baseline comparison to a portable HTML or JSON report.
+3. An optional cache-management command to list or clear
+   `%TEMP%\BlgAnalyzer` without deleting capture data.
+
+### Intentionally excluded
+
+- The counter calculator, because it did not contribute to diagnosis.
+- PerfMon-derived request latency bands, because interval averages cannot
+  reproduce exact per-request distributions.
+- Subjective `better` or `worse` comparison labels without workload context.
+- Raw-disk and multi-target execution inside integrated baseline mode because
+  of destructive risk and ambiguous volume correlation.
+- A single composite health score, because it would hide source boundaries
+  and workload compatibility.
+
+## Architecture brief
+
+The tool has four main layers:
+
+1. `Capture-StorageDiagnostics.ps1` coordinates PerfMon, Storport, optional
+   process-volume ETL, disk mapping, and DiskSpd baseline capture.
+2. `PerformanceAnalyzer.exe` discovers capture artifacts, validates command
+   inputs, hosts the embedded analysis engine, and opens the local dashboard.
+3. The analysis engine parses and correlates BLG, ETL, mapping, and DiskSpd
+   XML while preserving each source's measurement boundary.
+4. The browser dashboard presents time-aligned graphs, exact Storport latency
+   bands, process-volume contributors, automatic findings, and baseline
+   comparisons through a loopback-only API.
+
+Large Storport traces use streaming aggregation and processed caching under
+`%TEMP%\BlgAnalyzer`. The integrated baseline workflow accepts one controlled
+file target and records the effective command, timing, DiskSpd version, and
+SHA-256 in the capture manifest.
+
+Detailed diagrams are available in [Architecture.md](Architecture.md) and
+[Architecture.pdf](Architecture.pdf).
