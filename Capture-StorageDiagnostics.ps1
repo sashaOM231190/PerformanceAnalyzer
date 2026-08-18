@@ -9,7 +9,9 @@ after reproducing the issue. The script then stops the collectors and writes
 DiskMapping.json for BLG, Storport, process, volume, and disk correlation.
 With -SetBaseline, the script prompts for a safe file target and workload
 preset, or accepts a custom DiskSpd command. It runs diskspd.exe from the
-script directory and stores its XML result in the capture folder.
+script directory and stores its XML result in the capture folder. Add
+-ProcessETL to collect ProcessVolume.etl during the baseline workload.
+Add -MiniFilter to collect bounded Filter Manager callback tracing with WPR.
 
 .EXAMPLE
 .\Capture-StorageDiagnostics.ps1
@@ -19,6 +21,12 @@ script directory and stores its XML result in the capture folder.
 
 .EXAMPLE
 .\Capture-StorageDiagnostics.ps1 -SetBaseline
+
+.EXAMPLE
+.\Capture-StorageDiagnostics.ps1 -SetBaseline -ProcessETL
+
+.EXAMPLE
+.\Capture-StorageDiagnostics.ps1 -MiniFilter
 #>
 [CmdletBinding()]
 param(
@@ -28,7 +36,11 @@ param(
     [ValidateRange(256, 8192)]
     [int]$ProcessIoTraceMaxMB = 1024,
 
-    [switch]$SetBaseline
+    [switch]$SetBaseline,
+
+    [switch]$ProcessETL,
+
+    [switch]$MiniFilter
 )
 
 Set-StrictMode -Version 2.0
@@ -46,6 +58,11 @@ $captureDirectory = Join-Path $OutputRoot "StorageCapture-$timestamp"
 $perfOutput = Join-Path $captureDirectory 'Storage.blg'
 $storportOutput = Join-Path $captureDirectory 'Storport.etl'
 $processIoOutput = Join-Path $captureDirectory 'ProcessVolume.etl'
+$miniFilterOutput = Join-Path $captureDirectory 'MiniFilter.etl'
+$miniFilterInventoryOutput =
+    Join-Path $captureDirectory 'MiniFilterInventory.json'
+$miniFilterProfilePath =
+    Join-Path $PSScriptRoot 'PerformanceAnalyzer-Minifilter.wprp'
 $mappingOutput = Join-Path $captureDirectory 'DiskMapping.json'
 $manifestOutput = Join-Path $captureDirectory 'CaptureManifest.json'
 $diskSpdOutput = Join-Path $captureDirectory 'DiskSpd-baseline.xml'
@@ -80,6 +97,33 @@ function Invoke-Logman {
     & logman.exe @Arguments
     if ($LASTEXITCODE -ne 0) {
         throw "$Operation failed. Logman exit code: $LASTEXITCODE"
+    }
+}
+
+function Get-MiniFilterInventory {
+    $lines = @(& fltmc.exe filters 2>&1)
+    if ($LASTEXITCODE -ne 0) {
+        throw "fltmc filters failed with exit code $LASTEXITCODE."
+    }
+
+    $filters = New-Object System.Collections.ArrayList
+    foreach ($line in $lines) {
+        if ($line -match (
+                '^\s*(?<Name>\S+)\s+(?<Instances>\d+)\s+' +
+                '(?<Altitude>\S+)\s+(?<Frame>\d+)\s*$')) {
+            $null = $filters.Add([pscustomobject][ordered]@{
+                Name         = $Matches.Name
+                NumInstances = [int]$Matches.Instances
+                Altitude     = $Matches.Altitude
+                Frame        = [int]$Matches.Frame
+            })
+        }
+    }
+    [pscustomobject][ordered]@{
+        SchemaVersion  = 1
+        ComputerName   = $env:COMPUTERNAME
+        CollectedAtUtc = [DateTimeOffset]::UtcNow.ToString('o')
+        Filters        = @($filters)
     }
 }
 
@@ -705,6 +749,8 @@ $perfCreated = $false
 $perfStarted = $false
 $storportStarted = $false
 $processIoStarted = $false
+$miniFilterStarted = $false
+$captureProcessIo = (-not $SetBaseline -or $ProcessETL) -and -not $MiniFilter
 $diskSpdConfiguration = if ($SetBaseline) {
     Get-DiskSpdBaselineConfiguration
 }
@@ -768,7 +814,28 @@ try {
     ) -Operation 'Starting the Storport trace'
     $storportStarted = $true
 
-    if (-not $SetBaseline) {
+    if ($MiniFilter) {
+        if (-not (Test-Path -LiteralPath $miniFilterProfilePath -PathType Leaf)) {
+            throw "Minifilter WPR profile was not found: $miniFilterProfilePath"
+        }
+        $wpr = Get-Command wpr.exe -ErrorAction SilentlyContinue
+        if ($null -eq $wpr) {
+            throw 'wpr.exe is required for -MiniFilter capture.'
+        }
+        $wprStatus = (& $wpr.Source -status 2>&1 | Out-String)
+        if ($wprStatus -notmatch 'WPR is not recording') {
+            throw 'Another WPR recording is active. Stop it before using -MiniFilter.'
+        }
+
+        Write-Host 'Starting bounded minifilter WPR trace...'
+        & $wpr.Source -start (
+            "$miniFilterProfilePath!PerformanceAnalyzerMiniFilter.Light")
+        if ($LASTEXITCODE -ne 0) {
+            throw "Starting minifilter WPR trace failed with exit code $LASTEXITCODE."
+        }
+        $miniFilterStarted = $true
+    }
+    elseif ($captureProcessIo) {
         & logman.exe query $processIoSession -ets *> $null
         if ($LASTEXITCODE -eq 0) {
             throw "The '$processIoSession' session is already running. Stop the existing kernel trace before starting this capture."
@@ -803,8 +870,17 @@ try {
     }
 
     Write-Host ''
-    $captureDescription = if ($SetBaseline) {
+    $captureDescription = if ($SetBaseline -and $miniFilterStarted) {
+        'PerfMon, Storport, and minifilter baseline captures are running.'
+    }
+    elseif ($SetBaseline -and $processIoStarted) {
+        'PerfMon, Storport, and process-volume baseline captures are running.'
+    }
+    elseif ($SetBaseline) {
         'PerfMon and Storport baseline captures are running.'
+    }
+    elseif ($miniFilterStarted) {
+        'PerfMon, Storport, minifilter, and process-volume captures are running.'
     }
     else {
         'PerfMon, Storport, and process-volume captures are running.'
@@ -821,6 +897,16 @@ try {
 finally {
     Write-Host ''
     Write-Host 'Stopping captures...'
+
+    if ($miniFilterStarted) {
+        & wpr.exe -stop $miniFilterOutput
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning (
+                "Stopping minifilter tracing failed with exit code " +
+                "$LASTEXITCODE. Cancelling WPR.")
+            & wpr.exe -cancel *> $null
+        }
+    }
 
     if ($processIoStarted) {
         & logman.exe stop $processIoSession -ets
@@ -873,12 +959,25 @@ Write-Host 'Collecting disk correlation information...'
 $mapping = Get-DiskMapping
 $mapping | ConvertTo-Json -Depth 8 |
     Set-Content -LiteralPath $mappingOutput -Encoding UTF8
+if ($MiniFilter) {
+    try {
+        Get-MiniFilterInventory |
+            ConvertTo-Json -Depth 5 |
+            Set-Content -LiteralPath $miniFilterInventoryOutput -Encoding UTF8
+    }
+    catch {
+        Write-Warning (
+            "Minifilter inventory could not be collected: " +
+            $_.Exception.Message)
+    }
+}
 
 $captureStoppedUtc = [DateTimeOffset]::UtcNow
 $blgFiles = @(Get-ChildItem -LiteralPath $captureDirectory -Filter '*.blg' -File)
 $etlFiles = @(Get-ChildItem -LiteralPath $captureDirectory -Filter '*.etl' -File)
 $storportFiles = @($etlFiles | Where-Object { $_.Name -ieq 'Storport.etl' })
 $processIoFiles = @($etlFiles | Where-Object { $_.Name -ieq 'ProcessVolume.etl' })
+$miniFilterFiles = @($etlFiles | Where-Object { $_.Name -ieq 'MiniFilter.etl' })
 $diskSpdExecutableInfo = if ($null -ne $diskSpdConfiguration) {
     Get-Item -LiteralPath $diskSpdConfiguration.Executable
 }
@@ -889,7 +988,7 @@ $diskSpdExecutableHash = if ($null -ne $diskSpdExecutableInfo) {
 }
 else { $null }
 $manifest = [pscustomobject][ordered]@{
-    SchemaVersion     = 5
+    SchemaVersion     = 6
     ComputerName      = $env:COMPUTERNAME
     CaptureStartedUtc = $captureStartedUtc.ToString('o')
     CaptureStoppedUtc = $captureStoppedUtc.ToString('o')
@@ -897,8 +996,24 @@ $manifest = [pscustomobject][ordered]@{
         ForEach-Object { $_.Name })
     StorportFiles     = @($storportFiles |
         ForEach-Object { $_.Name })
-    ProcessIoFiles    = @($processIoFiles |
+    ProcessIoFiles    = if ($MiniFilter) {
+        @($miniFilterFiles | ForEach-Object { $_.Name })
+    }
+    else {
+        @($processIoFiles | ForEach-Object { $_.Name })
+    }
+    MiniFilterFiles   = @($miniFilterFiles |
         ForEach-Object { $_.Name })
+    MiniFilterEnabled = [bool]$MiniFilter
+    MiniFilterProfile = if ($MiniFilter) {
+        'PerformanceAnalyzerMiniFilter.Light'
+    }
+    else { $null }
+    MiniFilterInventoryFile = if (
+        Test-Path -LiteralPath $miniFilterInventoryOutput -PathType Leaf) {
+        Split-Path -Leaf $miniFilterInventoryOutput
+    }
+    else { $null }
     DiskSpdBaselineFile = if (
         Test-Path -LiteralPath $diskSpdOutput -PathType Leaf) {
         Split-Path -Leaf $diskSpdOutput
@@ -948,6 +1063,14 @@ $manifest = [pscustomobject][ordered]@{
         '0x06000707'
     }
     else { $null }
+    ProcessIoWithBaseline = [bool]($SetBaseline -and $ProcessETL)
+    ProcessIoSource = if ($MiniFilter) {
+        'MiniFilter.etl'
+    }
+    elseif ($processIoStarted) {
+        'ProcessVolume.etl'
+    }
+    else { $null }
 }
 $manifest | ConvertTo-Json -Depth 4 |
     Set-Content -LiteralPath $manifestOutput -Encoding UTF8
@@ -959,16 +1082,23 @@ Write-Host "BLG:     $(
     @($blgFiles | ForEach-Object { $_.FullName }) -join ', ')"
 Write-Host "Storport:$(
     @($storportFiles | ForEach-Object { $_.FullName }) -join ', ')"
-$processIoDisplay = if ($processIoFiles.Count -gt 0) {
+$processIoDisplay = if ($MiniFilter -and $miniFilterFiles.Count -gt 0) {
+    @($miniFilterFiles | ForEach-Object { $_.FullName }) -join ', '
+}
+elseif ($processIoFiles.Count -gt 0) {
     @($processIoFiles | ForEach-Object { $_.FullName }) -join ', '
 }
-elseif ($SetBaseline) {
+elseif ($SetBaseline -and -not $ProcessETL) {
     'Not collected (baseline mode)'
 }
 else {
     'No process-volume ETL was produced'
 }
 Write-Host "Process: $processIoDisplay"
+if ($miniFilterFiles.Count -gt 0) {
+    Write-Host "MiniFlt: $(
+        @($miniFilterFiles | ForEach-Object { $_.FullName }) -join ', ')"
+}
 Write-Host "Mapping: $mappingOutput"
 Write-Host "Manifest:$manifestOutput"
 if (Test-Path -LiteralPath $diskSpdOutput -PathType Leaf) {
