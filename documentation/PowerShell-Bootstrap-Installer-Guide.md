@@ -705,4 +705,3 @@ Before publishing the future bootstrap:
 10. Test uninstall without deleting captures.
 11. Confirm the final success message is printed only after verification.
 12. Publish the bootstrap change before documenting the one-line command.
-
