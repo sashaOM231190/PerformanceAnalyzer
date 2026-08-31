@@ -50,62 +50,6 @@ function Invoke-ElevatedBootstrap {
   exit $process.ExitCode
 }
 
-function Get-CopilotCliVersion {
-  $copilotCommand = Get-Command copilot -ErrorAction SilentlyContinue
-
-  if ($null -eq $copilotCommand) {
-    throw 'GitHub Copilot CLI is not installed or is not available on PATH.'
-  }
-
-  $versionOutput = (& copilot --version 2>&1 | Out-String).Trim()
-  $versionMatch = [regex]::Match(
-    $versionOutput,
-    '(?i)GitHub Copilot CLI\s+v?(\d+\.\d+\.\d+)'
-  )
-
-  if (-not $versionMatch.Success) {
-    throw "Unable to determine the GitHub Copilot CLI version: $versionOutput"
-  }
-
-  return [version]$versionMatch.Groups[1].Value
-}
-
-function Update-CopilotCliIfRequired {
-  $minimumVersion = [version]'1.0.81'
-  $installedVersion = Get-CopilotCliVersion
-
-  if ($installedVersion -ge $minimumVersion) {
-    Write-Host "GitHub Copilot CLI $installedVersion is compatible."
-    return
-  }
-
-  Write-Host (
-    "GitHub Copilot CLI $installedVersion cannot reliably register " +
-    'MCP command arguments.'
-  )
-  Write-Host 'Updating GitHub Copilot CLI to the latest stable version...'
-
-  & copilot update stable
-
-  if ($LASTEXITCODE -ne 0) {
-    throw (
-      'GitHub Copilot CLI could not be updated. Run ' +
-      "'copilot update stable', then run this installer again."
-    )
-  }
-
-  $updatedVersion = Get-CopilotCliVersion
-
-  if ($updatedVersion -lt $minimumVersion) {
-    throw (
-      "GitHub Copilot CLI $updatedVersion is still incompatible. " +
-      'Restart PowerShell and run this installer again.'
-    )
-  }
-
-  Write-Host "GitHub Copilot CLI updated to $updatedVersion."
-}
-
 function Get-ApprovedVersion {
   if ($Version) {
     return $Version
@@ -205,8 +149,6 @@ if (-not $ValidateOnly -and -not (Test-Administrator)) {
   Write-Host 'Administrator access is required. Opening an elevated window...'
   Invoke-ElevatedBootstrap
 }
-
-Update-CopilotCliIfRequired
 
 $approvedVersion = Get-ApprovedVersion
 $tag = "v$approvedVersion"
@@ -370,8 +312,7 @@ try {
   & powershell.exe `
     -NoProfile `
     -ExecutionPolicy Bypass `
-    -File $packageInstaller `
-    -Endpoint 'http://127.0.0.1:8765/'
+    -File $packageInstaller
 
   if ($LASTEXITCODE -ne 0) {
     throw "Copilot integration installation failed with exit code $LASTEXITCODE."
