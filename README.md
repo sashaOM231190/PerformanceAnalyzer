@@ -1,208 +1,121 @@
 # PerformanceAnalyzer
 
-PerformanceAnalyzer is a portable Windows storage diagnostics package that
-captures and correlates PerfMon, Storport, process-volume I/O, Filter Manager
-callbacks, disk topology, and optional DiskSpd baseline results.
+PerformanceAnalyzer is distributed as two role-specific Windows packages:
 
-Version 2.3.0 also includes a local read-only MCP server, a
-PerformanceAnalyzer Copilot skill, and an embedded GitHub Copilot CLI terminal.
+| Package | Audience | Purpose |
+| --- | --- | --- |
+| Customer capture kit | External customers | Collect storage diagnostics for support |
+| Engineer analysis kit | Support engineers | Analyze captures with the desktop analyzer and Copilot integration |
+
+The packages are intentionally separate. Customers do not receive the analyzer,
+MCP server, Copilot skill, or embedded terminal.
 
 ## Download
 
-Download the latest package from
-[GitHub Releases](https://github.com/sashaOM231190/PerformanceAnalyzer/releases/latest).
+[Download PerformanceAnalyzer 2.3.1](https://github.com/sashaOM231190/PerformanceAnalyzer/releases/tag/v2.3.1)
 
-Version 2.3.0:
+Release assets:
 
-- [performanceanalyzer-complete-package-2.3.0.zip](https://github.com/sashaOM231190/PerformanceAnalyzer/releases/download/v2.3.0/performanceanalyzer-complete-package-2.3.0.zip)
-- [SHA-256 checksum](https://github.com/sashaOM231190/PerformanceAnalyzer/releases/download/v2.3.0/performanceanalyzer-complete-package-2.3.0.zip.sha256)
+- `performanceanalyzer-customer-capture-kit-2.3.1.zip`
+- `performanceanalyzer-customer-capture-kit-2.3.1.zip.sha256`
+- `performanceanalyzer-engineer-analysis-kit-2.3.1.zip`
+- `performanceanalyzer-engineer-analysis-kit-2.3.1.zip.sha256`
 
-Expected SHA-256:
-
-```text
-BF66C993C9F8FE898E1A36F837E0B71E7AD3CF9D26DFD5FEBEF6A5337B84B517
-```
-
-Verify the download:
-
-```powershell
-Get-FileHash `
-  .\performanceanalyzer-complete-package-2.3.0.zip `
-  -Algorithm SHA256
-```
+Verify each ZIP against its matching SHA-256 file before extraction.
 
 ## Requirements
 
-- Windows 10, Windows 11, or Windows Server with ConPTY support
 - Windows PowerShell 5.1
 - Administrator privileges for data capture
 - Windows Performance Recorder (`wpr.exe`)
 - Windows Performance Toolkit (`xperf.exe`) for ETL decoding
-- GitHub Copilot CLI for Copilot-assisted analysis
+- GitHub Copilot CLI for Copilot-assisted engineer analysis
 
-## Install
+## Customer capture workflow
 
-1. Download and extract the ZIP.
-2. Open the extracted package directory.
-3. Run:
+1. Download the customer capture kit and matching checksum.
+2. Verify the ZIP's SHA-256 hash.
+3. Extract the ZIP to `C:\`.
+4. Run `C:\PerformanceAnalyzer\2.3.1\start-capture.cmd`.
+5. Approve the administrator prompt and follow the capture instructions.
+6. Compress the complete `C:\PerfLogs\StorageCapture-*` directory.
+7. Transfer the archive through the approved support channel.
+
+The capture kit contains the PowerShell capture script, DiskSpd, its license,
+and the Minifilter WPR profile. It does not install software or Copilot
+components.
+
+## Engineer analysis workflow
+
+1. Download the engineer analysis kit and matching checksum.
+2. Verify the ZIP's SHA-256 hash.
+3. Extract the ZIP to `C:\`.
+4. Run `C:\PerformanceAnalyzer\2.3.1\install.cmd`.
+5. Restart GitHub Copilot CLI after the installer registers the MCP server and
+   installs the skill.
+6. Open a received capture with:
 
 ```powershell
-.\install.cmd
+& 'C:\PerformanceAnalyzer\2.3.1\analyzer\PerformanceAnalyzer.exe' `
+  'C:\path\to\StorageCapture-folder'
 ```
 
-The installer:
+The MCP server is installed per user under
+`%LOCALAPPDATA%\PerformanceAnalyzer\Copilot\2.3.1`, and the skill is installed
+under `%USERPROFILE%\.copilot\skills\performance-analyzer`.
 
-- installs the versioned MCP executable for the current user;
-- installs the `performance-analyzer` Copilot skill;
-- registers the `performance-analyzer` MCP server;
-- verifies the configured executable and analyzer endpoint.
+## Verify a download
 
-The capture and analyzer tools remain portable inside the extracted package.
+```powershell
+$zipPath = 'C:\path\to\downloaded-package.zip'
+$checksumPath = "$zipPath.sha256"
+$expected = [regex]::Match(
+  (Get-Content $checksumPath -Raw),
+  '(?i)\b[a-f0-9]{64}\b'
+).Value.ToUpperInvariant()
+$actual = (Get-FileHash $zipPath -Algorithm SHA256).Hash.ToUpperInvariant()
 
-## Package layout
+if ($actual -ne $expected) {
+  throw 'Package checksum verification failed.'
+}
+
+Write-Host 'Package checksum verified.'
+```
+
+## Package boundaries
+
+Customer capture kit:
 
 ```text
-install.cmd
-readme.txt
-
-analyzer\
-  performanceanalyzer.exe
-  terminal_assets\
-
-data_capture_tools\
-  capture-storagediagnostics.ps1
-  diskspd.exe
-  performanceanalyzer-minifilter.wprp
-
-copilot_mcp_server\
-  performanceanalyzer.mcp.exe
-
-copilot_skill\
-  skill.md
-  reference\
-
-setup_files\
-winget_packaging\
+PerformanceAnalyzer\2.3.1\
+  readme.txt
+  start-capture.cmd
+  capture_tools\
 ```
 
-## Capture storage diagnostics
-
-Run the capture script from an elevated Windows PowerShell window:
-
-```powershell
-.\data_capture_tools\capture-storagediagnostics.ps1
-```
-
-Common combinations:
-
-```powershell
-# Capture storage, process-volume, and PerfMon data
-.\data_capture_tools\capture-storagediagnostics.ps1
-
-# Add Minifilter callback tracing
-.\data_capture_tools\capture-storagediagnostics.ps1 -MiniFilter
-
-# Run an interactive DiskSpd baseline
-.\data_capture_tools\capture-storagediagnostics.ps1 -SetBaseline
-
-# Combine DiskSpd baseline and Minifilter tracing
-.\data_capture_tools\capture-storagediagnostics.ps1 `
-  -SetBaseline `
-  -MiniFilter
-```
-
-Captures are stored under `C:\PerfLogs` by default.
-
-## Analyze a capture
-
-```powershell
-.\analyzer\performanceanalyzer.exe `
-  C:\PerfLogs\StorageCapture-YYYYMMDD-HHMMSS
-```
-
-The analyzer discovers the available BLG, Storport, process-volume,
-Minifilter, mapping, manifest, and DiskSpd files in the selected folder.
-
-Useful options:
+Engineer analysis kit:
 
 ```text
---no-browser
---port <port>
---version
---help
+PerformanceAnalyzer\2.3.1\
+  readme.txt
+  install.cmd
+  analyzer\
+  copilot_mcp_server\
+  copilot_skill\
+  setup_files\
 ```
 
-## Copilot integration
-
-The dashboard includes a Copilot button that:
-
-1. verifies Copilot CLI, the MCP registration, installed skill, and terminal
-   assets;
-2. repairs package-managed MCP and skill setup when required;
-3. opens GitHub Copilot CLI in an embedded xterm.js terminal;
-4. supplies an initial PerformanceAnalyzer analysis prompt.
-
-Terminal input, output, resize, and status use one persistent WebSocket bound
-to loopback. Closing every dashboard page stops the Copilot process after a
-short grace period. **End Session** stops both Copilot and
-PerformanceAnalyzer.
-
-The AI integration is read-only. It interprets measurements returned by
-PerformanceAnalyzer and does not parse raw BLG, ETL, CSV, XML, or cache files.
-
-## Remove Copilot integration
-
-From the extracted package, run:
-
-```powershell
-.\setup_files\uninstall.cmd
-```
-
-This removes the installed MCP server, skill, and Copilot registration. It
-does not delete the portable package or captured diagnostics.
-
-## Measurement boundaries
-
-PerfMon disk latency, Storport request duration, Minifilter callback duration,
-DiskSpd latency, and application latency use different measurement boundaries.
-They can be correlated by time but must not be added together or subtracted
-from one another.
-
-Minifilter cumulative duration can overlap across operations, threads,
-processors, filters, and callback phases. It is not equivalent to serialized
-application delay.
-
-## Security
+## Security and measurement boundaries
 
 - Analyzer and terminal endpoints bind only to `127.0.0.1`.
-- Copilot lifecycle and WebSocket routes require a random per-dashboard token.
-- The MCP server accepts only loopback HTTP analyzer endpoints.
-- MCP tools are read-only and non-destructive.
-- The Copilot process tree is owned by a Windows Job Object and is terminated
-  when the analyzer session closes.
-
-## Troubleshooting
-
-### Windows reports an unrecognized application
-
-The package is not currently code-signed. Verify the SHA-256 checksum before
-running it.
-
-### Copilot button reports a missing component
-
-Run `install.cmd` again from the extracted package and restart
-PerformanceAnalyzer.
-
-### The analyzer cannot decode ETL files
-
-Install the Windows Performance Toolkit and confirm `xperf.exe` is available.
-
-### Minifilter capture cannot start
-
-Run PowerShell as administrator, stop any existing WPR recording, and confirm
-the supplied WPR profile remains in `data_capture_tools`.
+- The MCP server is read-only and accepts only loopback analyzer endpoints.
+- The Copilot skill interprets data returned by PerformanceAnalyzer; it does
+  not parse raw BLG, ETL, CSV, XML, or cache files.
+- PerfMon, Storport, Minifilter, DiskSpd, and application latency use different
+  measurement boundaries and must not be added together.
 
 ## Release policy
 
 Compiled packages are distributed through GitHub Releases rather than being
-committed to the repository history. Each release includes a SHA-256 checksum.
+committed to repository history. The analyzer and MCP server are maintained in
+separate private source repositories.
