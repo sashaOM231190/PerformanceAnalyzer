@@ -12,14 +12,14 @@ MCP server, Copilot skill, or embedded terminal.
 
 ## Download
 
-[Download PerformanceAnalyzer 2.3.3](https://github.com/sashaOM231190/PerformanceAnalyzer/releases/tag/v2.3.3)
+[Download PerformanceAnalyzer 2.3.4](https://github.com/sashaOM231190/PerformanceAnalyzer/releases/tag/v2.3.4)
 
 Release assets:
 
-- `performanceanalyzer-customer-capture-kit-2.3.3.zip`
-- `performanceanalyzer-customer-capture-kit-2.3.3.zip.sha256`
-- `performanceanalyzer-engineer-analysis-kit-2.3.3.zip`
-- `performanceanalyzer-engineer-analysis-kit-2.3.3.zip.sha256`
+- `performanceanalyzer-customer-capture-kit-2.3.4.zip`
+- `performanceanalyzer-customer-capture-kit-2.3.4.zip.sha256`
+- `performanceanalyzer-engineer-analysis-kit-2.3.4.zip`
+- `performanceanalyzer-engineer-analysis-kit-2.3.4.zip.sha256`
 
 Verify each ZIP against its matching SHA-256 file before extraction.
 
@@ -57,7 +57,7 @@ available.
 1. Download the customer capture kit and matching checksum.
 2. Verify the ZIP's SHA-256 hash.
 3. Extract the ZIP to `C:\`.
-4. Run `C:\PerformanceAnalyzer\2.3.3\start-capture.cmd`.
+4. Run `C:\PerformanceAnalyzer\2.3.4\start-capture.cmd`.
 5. Approve the administrator prompt and follow the capture instructions.
 6. Compress the complete `C:\PerfLogs\StorageCapture-*` directory.
 7. Transfer the archive through the approved support channel.
@@ -71,18 +71,18 @@ components.
 1. Download the engineer analysis kit and matching checksum.
 2. Verify the ZIP's SHA-256 hash.
 3. Extract the ZIP to `C:\`.
-4. Run `C:\PerformanceAnalyzer\2.3.3\install.cmd`.
+4. Run `C:\PerformanceAnalyzer\2.3.4\install.cmd`.
 5. Restart GitHub Copilot CLI after the installer registers the MCP server and
    installs the skill.
 6. Open a received capture with:
 
 ```powershell
-& 'C:\PerformanceAnalyzer\2.3.3\analyzer\PerformanceAnalyzer.exe' `
+& 'C:\PerformanceAnalyzer\2.3.4\analyzer\PerformanceAnalyzer.exe' `
   'C:\path\to\StorageCapture-folder'
 ```
 
 The MCP server is installed per user under
-`%LOCALAPPDATA%\PerformanceAnalyzer\Copilot\2.3.3`, and the skill is installed
+`%LOCALAPPDATA%\PerformanceAnalyzer\Copilot\2.3.4`, and the skill is installed
 under `%USERPROFILE%\.copilot\skills\performance-analyzer`.
 
 ## Verify a download
@@ -108,7 +108,7 @@ Write-Host 'Package checksum verified.'
 Customer capture kit:
 
 ```text
-PerformanceAnalyzer\2.3.3\
+PerformanceAnalyzer\2.3.4\
   readme.txt
   start-capture.cmd
   capture_tools\
@@ -117,7 +117,7 @@ PerformanceAnalyzer\2.3.3\
 Engineer analysis kit:
 
 ```text
-PerformanceAnalyzer\2.3.3\
+PerformanceAnalyzer\2.3.4\
   readme.txt
   install.cmd
   analyzer\
