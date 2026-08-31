@@ -44,6 +44,10 @@ The command does not change between releases. Publishing a new approved
 version requires updating `latest-version.txt` after its release assets are
 available.
 
+The bootstrap also updates GitHub Copilot CLI releases older than 1.0.81
+before registering the MCP server. Those older releases cannot reliably
+forward the MCP server's `--endpoint` argument.
+
 ## Requirements
 
 - Windows PowerShell 5.1
