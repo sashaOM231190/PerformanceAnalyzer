@@ -23,6 +23,27 @@ Release assets:
 
 Verify each ZIP against its matching SHA-256 file before extraction.
 
+## Automated engineer installation
+
+Run this command from Windows PowerShell:
+
+```powershell
+$path = Join-Path $env:TEMP 'Install-PerformanceAnalyzer.ps1'; Invoke-WebRequest 'https://raw.githubusercontent.com/sashaOM231190/PerformanceAnalyzer/main/Install-PerformanceAnalyzer.ps1' -OutFile $path -UseBasicParsing; & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path
+```
+
+The bootstrap automatically requests administrator access, reads the approved
+version from `latest-version.txt`, downloads and verifies both packages,
+installs the engineer tools, configures the Copilot integration, and retains
+the customer ZIP under:
+
+```text
+C:\PerformanceAnalyzer\Packages\<version>
+```
+
+The command does not change between releases. Publishing a new approved
+version requires updating `latest-version.txt` after its release assets are
+available.
+
 ## Requirements
 
 - Windows PowerShell 5.1
