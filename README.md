@@ -59,10 +59,6 @@ The installer:
 
 The capture and analyzer tools remain portable inside the extracted package.
 
-For a detailed explanation of every manual installation step and how those
-steps map to a future one-command PowerShell bootstrap, see
-[PowerShell bootstrap installer guide](documentation/PowerShell-Bootstrap-Installer-Guide.md).
-
 ## Package layout
 
 ```text
