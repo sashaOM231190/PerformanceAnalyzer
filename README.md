@@ -25,17 +25,19 @@ Verify each ZIP against its matching SHA-256 file before extraction.
 
 ### Coach prerelease
 
-PerformanceAnalyzer `2.5.0-coach.1` introduces an educational Coach workflow.
-It can arrange dashboard graphs, but capture-specific evidence remains locked
-until the engineer records an observation, correlation, and hypothesis.
-There is no urgency bypass.
+PerformanceAnalyzer `2.5.0-coach.2` introduces an educational Coach workflow.
+On launch it offers a consent-based tour of every graph category available in
+the capture. Before arranging an investigation, Coach asks what the engineer
+is looking for. Capture-specific evidence remains locked until the engineer
+records an observation, correlation, and hypothesis. There is no urgency
+bypass.
 
-[Download Coach 2.5.0-coach.1](https://github.com/sashaOM231190/PerformanceAnalyzer/releases/tag/v2.5.0-coach.1)
+[Download Coach 2.5.0-coach.2](https://github.com/sashaOM231190/PerformanceAnalyzer/releases/tag/v2.5.0-coach.2)
 
 Install this prerelease explicitly:
 
 ```powershell
-$path = Join-Path $env:TEMP 'Install-PerformanceAnalyzer.ps1'; Invoke-WebRequest 'https://raw.githubusercontent.com/sashaOM231190/PerformanceAnalyzer/main/Install-PerformanceAnalyzer.ps1' -OutFile $path -UseBasicParsing; & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -Version 2.5.0-coach.1
+$path = Join-Path $env:TEMP 'Install-PerformanceAnalyzer.ps1'; Invoke-WebRequest 'https://raw.githubusercontent.com/sashaOM231190/PerformanceAnalyzer/main/Install-PerformanceAnalyzer.ps1' -OutFile $path -UseBasicParsing; & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -Version 2.5.0-coach.2
 ```
 
 The automatic installation channel remains on stable version `2.4.1`. To
