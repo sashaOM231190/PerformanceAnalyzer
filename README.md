@@ -107,6 +107,45 @@ The MCP server is installed per user under
 `%LOCALAPPDATA%\PerformanceAnalyzer\Copilot\2.4.2`, and the skill is installed
 under `%USERPROFILE%\.copilot\skills\performance-analyzer`.
 
+## Command reference
+
+Display the built-in command reference:
+
+```powershell
+.\PerformanceAnalyzer.exe /?
+```
+
+Usage:
+
+```text
+PerformanceAnalyzer.exe "E:\Path\CaptureFolder"
+PerformanceAnalyzer.exe --folder "E:\Path\CaptureFolder"
+PerformanceAnalyzer.exe "E:\Path\Capture.blg"
+PerformanceAnalyzer.exe --etl "E:\Path\Storport.etl"
+PerformanceAnalyzer.exe --process-etl "E:\Path\ProcessVolume.etl" --mapping "E:\Path\DiskMapping.json"
+PerformanceAnalyzer.exe --minifilter-etl "E:\Path\MiniFilter.etl" --mapping "E:\Path\DiskMapping.json"
+PerformanceAnalyzer.exe --blg "E:\Path\Capture.blg" --etl "E:\Path\Storport.etl"
+PerformanceAnalyzer.exe --blg "E:\Path\Capture.blg" --etl "E:\Path\Storport.etl" --mapping "E:\Path\DiskMapping.json" --diskspd-xml "E:\Path\DiskSpd-result.xml"
+```
+
+Options:
+
+| Option | Description |
+| --- | --- |
+| `--folder <path>` | Auto-discover capture files. |
+| `--blg <path>` | PerfMon BLG input. |
+| `--etl <path>` | Storport ETL input. |
+| `--process-etl <path>` | Process-volume ETL input. |
+| `--minifilter-etl <path>` | Minifilter callback ETL input. |
+| `--mapping <path>` | Optional disk-correlation JSON. |
+| `--diskspd-xml <path>` | Optional DiskSpd `-Rxml` result. |
+| `--port <1024-65535>` | Use a different local HTTP port. |
+| `--no-browser` | Do not open the browser automatically. |
+| `--version`, `-v` | Display the analyzer version. |
+| `--telemetry-status` | Display anonymous telemetry status. |
+| `--enable-telemetry` | Enable anonymous usage telemetry. |
+| `--disable-telemetry` | Disable anonymous usage telemetry. Restart the analyzer afterward. |
+
 ## Verify a download
 
 ```powershell
