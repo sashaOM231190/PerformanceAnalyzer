@@ -12,35 +12,37 @@ MCP server, Copilot skill, or embedded terminal.
 
 ## Download
 
-[Download PerformanceAnalyzer 2.4.1](https://github.com/sashaOM231190/PerformanceAnalyzer/releases/tag/v2.4.1)
+[Download PerformanceAnalyzer 2.4.2](https://github.com/sashaOM231190/PerformanceAnalyzer/releases/tag/v2.4.2)
 
 Release assets:
 
-- `performanceanalyzer-customer-capture-kit-2.4.1.zip`
-- `performanceanalyzer-customer-capture-kit-2.4.1.zip.sha256`
-- `performanceanalyzer-engineer-analysis-kit-2.4.1.zip`
-- `performanceanalyzer-engineer-analysis-kit-2.4.1.zip.sha256`
+- `performanceanalyzer-customer-capture-kit-2.4.2.zip`
+- `performanceanalyzer-customer-capture-kit-2.4.2.zip.sha256`
+- `performanceanalyzer-engineer-analysis-kit-2.4.2.zip`
+- `performanceanalyzer-engineer-analysis-kit-2.4.2.zip.sha256`
 
 Verify each ZIP against its matching SHA-256 file before extraction.
 
 ### Coach prerelease
 
-PerformanceAnalyzer `2.5.0-coach.3` introduces context-first educational
+PerformanceAnalyzer `2.5.0-coach.4` provides context-first educational
 onboarding. Coach asks what the engineer is investigating, loads one relevant
 graph, explains its purpose and UI path, and requests consent before adding
 each next graph. Capture-specific evidence remains locked until the engineer
 records an observation, correlation, and hypothesis. Coach can also be
-unembedded into a separate resizable window. There is no urgency bypass.
+unembedded into a separate resizable window. There is no urgency bypass. The
+dashboard also reports the current anonymous telemetry state and provides the
+opt-out command when telemetry is enabled.
 
-[Download Coach 2.5.0-coach.3](https://github.com/sashaOM231190/PerformanceAnalyzer/releases/tag/v2.5.0-coach.3)
+[Download Coach 2.5.0-coach.4](https://github.com/sashaOM231190/PerformanceAnalyzer/releases/tag/v2.5.0-coach.4)
 
 Install this prerelease explicitly:
 
 ```powershell
-$path = Join-Path $env:TEMP 'Install-PerformanceAnalyzer.ps1'; Invoke-WebRequest 'https://raw.githubusercontent.com/sashaOM231190/PerformanceAnalyzer/main/Install-PerformanceAnalyzer.ps1' -OutFile $path -UseBasicParsing; & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -Version 2.5.0-coach.3
+$path = Join-Path $env:TEMP 'Install-PerformanceAnalyzer.ps1'; Invoke-WebRequest 'https://raw.githubusercontent.com/sashaOM231190/PerformanceAnalyzer/main/Install-PerformanceAnalyzer.ps1' -OutFile $path -UseBasicParsing; & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -Version 2.5.0-coach.4
 ```
 
-The automatic installation channel remains on stable version `2.4.1`. To
+The automatic installation channel uses stable version `2.4.2`. To
 rollback, run the same command with `-Version 2.4.1`.
 
 ## Automated engineer installation
@@ -77,7 +79,7 @@ available.
 1. Download the customer capture kit and matching checksum.
 2. Verify the ZIP's SHA-256 hash.
 3. Extract the ZIP to `C:\`.
-4. Run `C:\PerformanceAnalyzer\2.4.1\start-capture.cmd`.
+4. Run `C:\PerformanceAnalyzer\2.4.2\start-capture.cmd`.
 5. Approve the administrator prompt and follow the capture instructions.
 6. Compress the complete `C:\PerfLogs\StorageCapture-*` directory.
 7. Transfer the archive through the approved support channel.
@@ -91,18 +93,18 @@ components.
 1. Download the engineer analysis kit and matching checksum.
 2. Verify the ZIP's SHA-256 hash.
 3. Extract the ZIP to `C:\`.
-4. Run `C:\PerformanceAnalyzer\2.4.1\install.cmd`.
+4. Run `C:\PerformanceAnalyzer\2.4.2\install.cmd`.
 5. Restart GitHub Copilot CLI after the installer registers the MCP server and
    installs the skill.
 6. Open a received capture with:
 
 ```powershell
-& 'C:\PerformanceAnalyzer\2.4.1\analyzer\PerformanceAnalyzer.exe' `
+& 'C:\PerformanceAnalyzer\2.4.2\analyzer\PerformanceAnalyzer.exe' `
   'C:\path\to\StorageCapture-folder'
 ```
 
 The MCP server is installed per user under
-`%LOCALAPPDATA%\PerformanceAnalyzer\Copilot\2.4.1`, and the skill is installed
+`%LOCALAPPDATA%\PerformanceAnalyzer\Copilot\2.4.2`, and the skill is installed
 under `%USERPROFILE%\.copilot\skills\performance-analyzer`.
 
 ## Verify a download
@@ -128,7 +130,7 @@ Write-Host 'Package checksum verified.'
 Customer capture kit:
 
 ```text
-PerformanceAnalyzer\2.4.1\
+PerformanceAnalyzer\2.4.2\
   readme.txt
   start-capture.cmd
   capture_tools\
@@ -137,7 +139,7 @@ PerformanceAnalyzer\2.4.1\
 Engineer analysis kit:
 
 ```text
-PerformanceAnalyzer\2.4.1\
+PerformanceAnalyzer\2.4.2\
   readme.txt
   install.cmd
   analyzer\
