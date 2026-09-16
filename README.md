@@ -25,21 +25,21 @@ Verify each ZIP against its matching SHA-256 file before extraction.
 
 ### Coach prerelease
 
-PerformanceAnalyzer `2.5.0-coach.4` provides context-first educational
-onboarding. Coach asks what the engineer is investigating, loads one relevant
-graph, explains its purpose and UI path, and requests consent before adding
-each next graph. Capture-specific evidence remains locked until the engineer
-records an observation, correlation, and hypothesis. Coach can also be
-unembedded into a separate resizable window. There is no urgency bypass. The
-dashboard also reports the current anonymous telemetry state and provides the
-opt-out command when telemetry is enabled.
+PerformanceAnalyzer `2.5.0-coach.5` adds adaptive Beginner, Guided, and Expert
+coaching. Every level preserves the context, graph-introduction, observation,
+correlation, hypothesis, and evidence-verification gates. Coach now displays
+workflow progress, explains why each graph was selected, provides structured
+response templates and progressive hints, supports revisiting graphs and
+correcting context or time range, and produces a reusable investigation
+summary with the recommended next action. Coach can also be unembedded into a
+separate resizable window. There is no urgency or experience-level bypass.
 
-[Download Coach 2.5.0-coach.4](https://github.com/sashaOM231190/PerformanceAnalyzer/releases/tag/v2.5.0-coach.4)
+[Download Coach 2.5.0-coach.5](https://github.com/sashaOM231190/PerformanceAnalyzer/releases/tag/v2.5.0-coach.5)
 
 Install this prerelease explicitly:
 
 ```powershell
-$path = Join-Path $env:TEMP 'Install-PerformanceAnalyzer.ps1'; Invoke-WebRequest 'https://raw.githubusercontent.com/sashaOM231190/PerformanceAnalyzer/main/Install-PerformanceAnalyzer.ps1' -OutFile $path -UseBasicParsing; & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -Version 2.5.0-coach.4
+$path = Join-Path $env:TEMP 'Install-PerformanceAnalyzer.ps1'; Invoke-WebRequest 'https://raw.githubusercontent.com/sashaOM231190/PerformanceAnalyzer/main/Install-PerformanceAnalyzer.ps1' -OutFile $path -UseBasicParsing; & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -Version 2.5.0-coach.5
 ```
 
 The automatic installation channel uses stable version `2.4.2`. To
