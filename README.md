@@ -12,37 +12,53 @@ MCP server, Copilot skill, or embedded terminal.
 
 ## Download
 
-[Download PerformanceAnalyzer Coach 2.5.0-coach.5](https://github.com/sashaOM231190/PerformanceAnalyzer/releases/tag/v2.5.0-coach.5)
+[Download PerformanceAnalyzer Coach 2.5.0-coach.6](https://github.com/sashaOM231190/PerformanceAnalyzer/releases/tag/v2.5.0-coach.6)
 
 Use the Coach release for engineer analysis. This is a prerelease; the
 download and installation instructions below select it explicitly.
 
 Release assets:
 
-- `performanceanalyzer-customer-capture-kit-2.5.0-coach.5.zip`
-- `performanceanalyzer-customer-capture-kit-2.5.0-coach.5.zip.sha256`
-- `performanceanalyzer-engineer-analysis-kit-2.5.0-coach.5.zip`
-- `performanceanalyzer-engineer-analysis-kit-2.5.0-coach.5.zip.sha256`
+- `performanceanalyzer-customer-capture-kit-2.5.0-coach.6.zip`
+- `performanceanalyzer-customer-capture-kit-2.5.0-coach.6.zip.sha256`
+- `performanceanalyzer-engineer-analysis-kit-2.5.0-coach.6.zip`
+- `performanceanalyzer-engineer-analysis-kit-2.5.0-coach.6.zip.sha256`
 
 Verify each ZIP against its matching SHA-256 file before extraction.
 
 ### Coach features
 
-PerformanceAnalyzer `2.5.0-coach.5` adds adaptive Beginner, Guided, and Expert
-coaching. Every level preserves the context, graph-introduction, observation,
-correlation, hypothesis, and evidence-verification gates. Coach now displays
-workflow progress, explains why each graph was selected, provides structured
-response templates and progressive hints, supports revisiting graphs and
-correcting context or time range, and produces a reusable investigation
-summary with the recommended next action. Coach can also be unembedded into a
-separate resizable window. There is no urgency or experience-level bypass.
+PerformanceAnalyzer `2.5.0-coach.6` starts with the captured disk number and
+volume identity, validates their mapping, and classifies the investigation as
+storage performance/latency. Coach introduces Storport average and maximum
+latency for the selected operation/opcode, then matching PerfMon latency,
+average queue length, current queue length, throughput, and minifilter callback
+activity. It explains sampling intervals and distinct measurement boundaries;
+minifilter duration is not latency minus Storport.
+
+Beginner, Guided, and Expert change explanation depth. The initial foundation
+preserves observation, correlation, hypothesis and verification gates.
+Unavailable sources/counters require explicit acknowledgement instead of
+substituting another disk or operation. Verified completion unlocks the wider
+read-only analysis for the same capture; a different capture resets the
+foundation. PerfMon-counter and educational questions remain available at
+every stage. Progress, hints, graph revisiting, context correction and reusable
+investigation summaries remain available. Coach can be unembedded into a
+separate resizable window.
+
+Graphs in the middle pane can be reordered with the header's **Move** drag
+handle, **Up**/**Down** buttons, or **Alt+Up/Down** on the handle. Escape cancels
+a drag. Reordering preserves data, colours, time range and aligned readings
+without reloading samples. New graphs append, range changes preserve order,
+and **Undo Coach arrangement** restores the previous layout. Order is
+session-only.
 
 ## Automated engineer installation
 
 Run this command from Windows PowerShell:
 
 ```powershell
-$path = Join-Path $env:TEMP 'Install-PerformanceAnalyzer.ps1'; Invoke-WebRequest 'https://raw.githubusercontent.com/sashaOM231190/PerformanceAnalyzer/main/Install-PerformanceAnalyzer.ps1' -OutFile $path -UseBasicParsing; & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -Version 2.5.0-coach.5
+$path = Join-Path $env:TEMP 'Install-PerformanceAnalyzer.ps1'; Invoke-WebRequest 'https://raw.githubusercontent.com/sashaOM231190/PerformanceAnalyzer/main/Install-PerformanceAnalyzer.ps1' -OutFile $path -UseBasicParsing; & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -Version 2.5.0-coach.6
 ```
 
 The bootstrap automatically requests administrator access, downloads and
@@ -54,7 +70,7 @@ the customer ZIP under:
 C:\PerformanceAnalyzer\Packages\<version>
 ```
 
-Keep `-Version 2.5.0-coach.5` in this command to select Coach. Omitting
+Keep `-Version 2.5.0-coach.6` in this command to select Coach. Omitting
 `-Version` uses the separate default channel in `latest-version.txt`, which
 has not been switched to Coach. For a newer recommended Coach release,
 update the explicit version only after its release assets are available.
@@ -72,7 +88,7 @@ update the explicit version only after its release assets are available.
 1. Download the customer capture kit and matching checksum.
 2. Verify the ZIP's SHA-256 hash.
 3. Extract the ZIP to `C:\`.
-4. Run `C:\PerformanceAnalyzer\2.5.0-coach.5\start-capture.cmd`.
+4. Run `C:\PerformanceAnalyzer\2.5.0-coach.6\start-capture.cmd`.
 5. Approve the administrator prompt and follow the capture instructions.
 6. Compress the complete `C:\PerfLogs\StorageCapture-*` directory.
 7. Transfer the archive through the approved support channel.
@@ -84,18 +100,18 @@ components.
 ### Where to get the capture script
 
 **Cloning this repository does not provide the capture script.** Capture tools
-are distributed in the customer ZIP on the [Coach release page](https://github.com/sashaOM231190/PerformanceAnalyzer/releases/tag/v2.5.0-coach.5),
+are distributed in the customer ZIP on the [Coach release page](https://github.com/sashaOM231190/PerformanceAnalyzer/releases/tag/v2.5.0-coach.6),
 not as tracked source files. Local `PerformanceAnalyzer-Packaging` staging
 directories and ZIPs are ignored by Git and are not part of a fresh clone.
 `Install-PerformanceAnalyzer.ps1` installs engineer tools; it is not the data
 capture script.
 
-Download `performanceanalyzer-customer-capture-kit-2.5.0-coach.5.zip` and its matching
+Download `performanceanalyzer-customer-capture-kit-2.5.0-coach.6.zip` and its matching
 `.sha256`, verify them using [Verify a download](#verify-a-download), and extract
 the ZIP to `C:\`. Keep these files together:
 
 ```text
-C:\PerformanceAnalyzer\2.5.0-coach.5\
+C:\PerformanceAnalyzer\2.5.0-coach.6\
   start-capture.cmd
   capture_tools\
     Capture-StorageDiagnostics.ps1
@@ -103,7 +119,7 @@ C:\PerformanceAnalyzer\2.5.0-coach.5\
     PerformanceAnalyzer-Minifilter.wprp
 ```
 
-This capture reference describes the **2.5.0-coach.5 customer kit**. For another
+This capture reference describes the **2.5.0-coach.6 customer kit**. For another
 release, substitute its version in the paths and check that release's script
 parameters and bundled DiskSpd help.
 
@@ -139,7 +155,7 @@ It **does not forward command-line flags**. For any advanced option, run the
 PowerShell script directly from an elevated window:
 
 ```powershell
-Set-Location 'C:\PerformanceAnalyzer\2.5.0-coach.5\capture_tools'
+Set-Location 'C:\PerformanceAnalyzer\2.5.0-coach.6\capture_tools'
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File `
   '.\Capture-StorageDiagnostics.ps1'
 ```
@@ -327,7 +343,7 @@ with the capture.
 
 ### Bundled DiskSpd option reference
 
-The 2.5.0-coach.5 kit bundles DiskSpd **2.2.0**. The following covers its help-listed
+The 2.5.0-coach.6 kit bundles DiskSpd **2.2.0**. The following covers its help-listed
 flags, including advanced flags not used by the presets. They are
 **DiskSpd options**, not parameters to `Capture-StorageDiagnostics.ps1`.
 Availability in DiskSpd does not imply compatibility with the custom
@@ -416,7 +432,7 @@ this reference as approval to run destructive raw-device tests.
 
 ### Collection settings and output files
 
-These collector settings are fixed in the 2.5.0-coach.5 script unless a parameter
+These collector settings are fixed in the 2.5.0-coach.6 script unless a parameter
 above explicitly changes them:
 
 | Collector | Settings / scope |
@@ -483,18 +499,18 @@ identify the exact session and coordinate its stop with the engineer.
 1. Download the engineer analysis kit and matching checksum.
 2. Verify the ZIP's SHA-256 hash.
 3. Extract the ZIP to `C:\`.
-4. Run `C:\PerformanceAnalyzer\2.5.0-coach.5\install.cmd`.
+4. Run `C:\PerformanceAnalyzer\2.5.0-coach.6\install.cmd`.
 5. Restart GitHub Copilot CLI after the installer registers the MCP server and
    installs the skill.
 6. Open a received capture with:
 
 ```powershell
-& 'C:\PerformanceAnalyzer\2.5.0-coach.5\analyzer\PerformanceAnalyzer.exe' `
+& 'C:\PerformanceAnalyzer\2.5.0-coach.6\analyzer\PerformanceAnalyzer.exe' `
   'C:\path\to\StorageCapture-folder'
 ```
 
 The MCP server is installed per user under
-`%LOCALAPPDATA%\PerformanceAnalyzer\Copilot\2.5.0-coach.5`, and the skill is installed
+`%LOCALAPPDATA%\PerformanceAnalyzer\Copilot\2.5.0-coach.6`, and the skill is installed
 under `%USERPROFILE%\.copilot\skills\performance-analyzer`.
 
 ## Command reference
@@ -559,7 +575,7 @@ Write-Host 'Package checksum verified.'
 Customer capture kit:
 
 ```text
-PerformanceAnalyzer\2.5.0-coach.5\
+PerformanceAnalyzer\2.5.0-coach.6\
   readme.txt
   start-capture.cmd
   capture_tools\
@@ -568,7 +584,7 @@ PerformanceAnalyzer\2.5.0-coach.5\
 Engineer analysis kit:
 
 ```text
-PerformanceAnalyzer\2.5.0-coach.5\
+PerformanceAnalyzer\2.5.0-coach.6\
   readme.txt
   install.cmd
   analyzer\
