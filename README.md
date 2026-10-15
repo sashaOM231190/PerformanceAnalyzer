@@ -145,6 +145,22 @@ registration from an earlier package can connect to MCP while querying the
 wrong analyzer port. `get_server_status` reports MCP process readiness, not an
 analyzer API health check.
 
+If MCP connects but capture/Coach calls fail, keep the dashboard open and run
+the read-only diagnostic as the same Windows user:
+
+```powershell
+$diagnostic = Join-Path $env:TEMP 'Test-CopilotConnection.ps1'
+Invoke-WebRequest 'https://raw.githubusercontent.com/sashaOM231190/PerformanceAnalyzer/main/scripts/Test-CopilotConnection.ps1' -OutFile $diagnostic -UseBasicParsing
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $diagnostic -Endpoint 'http://127.0.0.1:8765/'
+```
+
+Use the port actually shown in the browser. It checks the direct metadata API,
+runs five read-only tools using the registered MCP command/environment and
+prints MCP stderr so the underlying exception is not hidden. It does not alter
+integration or captures, and does not print capture metadata or proxy values.
+Review diagnostic output before sharing; exception messages can include local
+paths. It does not reproduce environment changes made by a running Copilot CLI.
+
 ## Undo AI integration
 
 Close analyzer/Coach and Copilot sessions. Run as the same Windows user that
