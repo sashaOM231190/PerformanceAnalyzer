@@ -55,6 +55,9 @@ try {
     Import-Functions $integration @()
     $layout = Get-EngineerLayout $PackageRoot
     Check $layout.Modern 'Combined layout is recognized'
+    $undo = Join-Path $PackageRoot 'Ai Integration\Remove-CopilotIntegration.ps1'
+    Check (Test-Path -LiteralPath $undo -PathType Leaf) 'Engineer kit includes the undo script'
+    Check ((Get-FileHash $undo).Hash -eq (Get-FileHash (Join-Path $repository 'scripts\Remove-CopilotIntegration.ps1')).Hash) 'Packaged undo script matches repository source'
     $legacy = Join-Path $LegacyReleaseRoot 'engineer-kit-staging\PerformanceAnalyzer\2.5.0-coach.7'
     Check (-not (Get-EngineerLayout $legacy).Modern) 'Legacy layout remains recognized'
     $broken = Join-Path $fixture 'broken'
@@ -172,10 +175,26 @@ try {
     function Invoke-WebRequest {
         param($Uri, $OutFile, [switch]$UseBasicParsing, $Headers)
         if (-not $OutFile) { throw 'Fixture expects explicit version and file downloads only.' }
+        if ($Uri -notmatch '/performanceanalyzer-engineer-analysis-kit-[^/]+\.zip(\.sha256)?$') {
+            throw "Bootstrap must download only the engineer ZIP/checksum, not a customer package: $Uri"
+        }
         Copy-Item -LiteralPath (Join-Path $env:PA_PACKAGE_DOWNLOAD_FIXTURE ([IO.Path]::GetFileName($Uri))) -Destination $OutFile
     }
     $env:PA_PACKAGE_DOWNLOAD_FIXTURE = $ReleaseRoot
     & $bootstrap -Version '2.5.0-coach.7' -ValidateOnly
+    $isolatedInstall = Join-Path $fixture 'installed'
+    $bootstrapText = Get-Content -LiteralPath $bootstrap -Raw
+    $rootAssignment = '$applicationRoot = ''C:\PerformanceAnalyzer'''
+    $elevationGuard = 'if (-not $ValidateOnly -and -not (Test-Administrator)) {'
+    Check ($bootstrapText.Contains($rootAssignment) -and $bootstrapText.Contains($elevationGuard)) 'Isolated installation overrides match the bootstrap'
+    $isolatedBootstrap = $bootstrapText.Replace(
+        $rootAssignment, ('$applicationRoot = ''' + $isolatedInstall.Replace("'", "''") + '''')
+    ).Replace($elevationGuard, 'if ($false) {')
+    Write-Fixture (Join-Path $isolatedInstall '2.5.0-coach.7\saved-capture\keep.txt') 'preserve'
+    & ([scriptblock]::Create($isolatedBootstrap)) -Version '2.5.0-coach.7' -SkipCopilotIntegration
+    Check (-not (Test-Path -LiteralPath (Join-Path $isolatedInstall 'Packages'))) 'Installation does not create a Packages cache'
+    Check (Test-Path -LiteralPath (Join-Path $isolatedInstall '2.5.0-coach.7\Ai Integration\Remove-CopilotIntegration.ps1')) 'Installation includes the undo script'
+    Check ((Get-Content -LiteralPath (Join-Path $isolatedInstall '2.5.0-coach.7\saved-capture\keep.txt') -Raw) -eq 'preserve') 'Bootstrap preserves existing captures'
     $env:PA_PACKAGE_DOWNLOAD_FIXTURE = $LegacyReleaseRoot
     & $bootstrap -Version '2.5.0-coach.7' -ValidateOnly
     Remove-Item Function:\Invoke-WebRequest

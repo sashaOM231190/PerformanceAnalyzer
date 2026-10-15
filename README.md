@@ -18,8 +18,9 @@ was removed; use the explicit capture commands below.
 For manual upgrades, extract into a clean directory: ZIP extraction does not
 remove old launchers left by an earlier kit.
 
-Install/refresh the engineer kit and cache the customer ZIP under
-`C:\PerformanceAnalyzer\Packages\2.5.0-coach.7`:
+Install/refresh the engineer kit under `C:\PerformanceAnalyzer\2.5.0-coach.7`.
+The installer does not download or cache the separate customer ZIP and does
+not create a `Packages` folder:
 
 ```powershell
 $path = Join-Path $env:TEMP 'Install-PerformanceAnalyzer.ps1'; Invoke-WebRequest 'https://raw.githubusercontent.com/sashaOM231190/PerformanceAnalyzer/main/Install-PerformanceAnalyzer.ps1' -OutFile $path -UseBasicParsing; & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -Version 2.5.0-coach.7
@@ -39,7 +40,7 @@ by organizational policy. Bootstrap options:
 ```powershell
 # Explicit consent to install missing Copilot CLI through WinGet.
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -Version 2.5.0-coach.7 -InstallCopilot
-# Validate downloads/package files only; do not install or change integration.
+# Validate the engineer download/package only; do not install or change integration.
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -Version 2.5.0-coach.7 -ValidateOnly
 # Install files without configuring AI integration.
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -Version 2.5.0-coach.7 -SkipCopilotIntegration
@@ -58,6 +59,7 @@ C:\PerformanceAnalyzer\2.5.0-coach.7\
     capture_tools\
   Ai Integration\
     Integrate-Copilot.ps1
+    Remove-CopilotIntegration.ps1
     version.txt
     copilot_mcp_server\
     copilot_skill\
@@ -65,6 +67,9 @@ C:\PerformanceAnalyzer\2.5.0-coach.7\
 
 Older installations may retain their old setup folders; the bootstrap refreshes
 the new files without deleting unrelated files or saved captures.
+An old `C:\PerformanceAnalyzer\Packages` cache is no longer used; you may
+manually delete it after checking its contents. Download the customer ZIP
+and checksum directly from the release page only when sharing with a customer.
 
 ## Capture: run as Administrator
 
@@ -132,6 +137,32 @@ Restart Copilot CLI; sign in with `/login` if needed and verify `/mcp` and
 and skill. MCP binary: `%LOCALAPPDATA%\PerformanceAnalyzer\Copilot\2.5.0-coach.7`.
 Skill: `%USERPROFILE%\.copilot\skills\performance-analyzer`.
 If `COPILOT_HOME` is set, configuration and skills use that directory instead.
+
+## Undo AI integration
+
+Close analyzer/Coach and Copilot sessions. Run as the same Windows user that
+installed the integration; Copilot CLI does not need to be installed:
+
+```powershell
+# Included in the engineer kit (not in customer capture_tools):
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'C:\PerformanceAnalyzer\2.5.0-coach.7\Ai Integration\Remove-CopilotIntegration.ps1' -WhatIf
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'C:\PerformanceAnalyzer\2.5.0-coach.7\Ai Integration\Remove-CopilotIntegration.ps1'
+
+# Alternatively, download the standalone script:
+$undo = Join-Path $env:TEMP 'Remove-CopilotIntegration.ps1'
+Invoke-WebRequest 'https://raw.githubusercontent.com/sashaOM231190/PerformanceAnalyzer/main/scripts/Remove-CopilotIntegration.ps1' -OutFile $undo -UseBasicParsing
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $undo -WhatIf
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $undo
+```
+
+Removes only the `performance-analyzer` MCP registration, installed versioned
+MCP binaries and skill, respecting `COPILOT_HOME`. Restart Copilot afterward.
+It leaves Copilot CLI, unrelated integrations and captures intact.
+
+**Optional manual cleanup:** save any captures, then delete
+`C:\PerformanceAnalyzerKit` if that is where you extracted the kit.
+The bootstrap installs under `C:\PerformanceAnalyzer` instead; check your
+actual location first. The undo script does **not** delete either kit folder.
 
 ## Verify a ZIP
 

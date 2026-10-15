@@ -232,13 +232,9 @@ $tag = "v$approvedVersion"
 $releaseBase = `
   "https://github.com/$owner/$repository/releases/download/$tag"
 
-$customerPackageName = `
-  "performanceanalyzer-customer-capture-kit-$approvedVersion.zip"
-
 $engineerPackageName = `
   "performanceanalyzer-engineer-analysis-kit-$approvedVersion.zip"
 
-$customerChecksumName = "$customerPackageName.sha256"
 $engineerChecksumName = "$engineerPackageName.sha256"
 
 $workRoot = Join-Path $env:TEMP (
@@ -248,11 +244,8 @@ $workRoot = Join-Path $env:TEMP (
 )
 
 $downloadRoot = Join-Path $workRoot 'downloads'
-$customerExtractRoot = Join-Path $workRoot 'customer'
 $engineerExtractRoot = Join-Path $workRoot 'engineer'
 
-$customerZip = Join-Path $downloadRoot $customerPackageName
-$customerChecksum = Join-Path $downloadRoot $customerChecksumName
 $engineerZip = Join-Path $downloadRoot $engineerPackageName
 $engineerChecksum = Join-Path $downloadRoot $engineerChecksumName
 
@@ -260,16 +253,7 @@ Show-Prerequisites
 
 try {
   New-Item -ItemType Directory -Path $downloadRoot | Out-Null
-  New-Item -ItemType Directory -Path $customerExtractRoot | Out-Null
   New-Item -ItemType Directory -Path $engineerExtractRoot | Out-Null
-
-  Get-ReleaseFile `
-    -Uri "$releaseBase/$customerPackageName" `
-    -Destination $customerZip
-
-  Get-ReleaseFile `
-    -Uri "$releaseBase/$customerChecksumName" `
-    -Destination $customerChecksum
 
   Get-ReleaseFile `
     -Uri "$releaseBase/$engineerPackageName" `
@@ -280,36 +264,15 @@ try {
     -Destination $engineerChecksum
 
   Test-PackageChecksum `
-    -PackagePath $customerZip `
-    -ChecksumPath $customerChecksum
-
-  Test-PackageChecksum `
     -PackagePath $engineerZip `
     -ChecksumPath $engineerChecksum
-
-  Expand-Archive `
-    -LiteralPath $customerZip `
-    -DestinationPath $customerExtractRoot
 
   Expand-Archive `
     -LiteralPath $engineerZip `
     -DestinationPath $engineerExtractRoot
 
-  $customerRoot = Join-Path $customerExtractRoot `
-    "PerformanceAnalyzer\$approvedVersion"
-
   $engineerRoot = Join-Path $engineerExtractRoot `
     "PerformanceAnalyzer\$approvedVersion"
-
-  Assert-PackageFiles `
-    -Root $customerRoot `
-    -PackageName 'Customer package' `
-    -RelativePaths @(
-      'readme.txt'
-      'capture_tools\Capture-StorageDiagnostics.ps1'
-      'capture_tools\diskspd.exe'
-      'capture_tools\PerformanceAnalyzer-Minifilter.wprp'
-    )
 
   $layout = Get-EngineerLayout -Root $engineerRoot
 
@@ -327,38 +290,19 @@ try {
     if ($layout.Modern) {
       & (Join-Path $engineerRoot $layout.Installer) -ValidateOnly
     }
-    Write-Host "PerformanceAnalyzer $approvedVersion packages are valid."
+    Write-Host "PerformanceAnalyzer $approvedVersion engineer package is valid."
     return
   }
 
   $applicationRoot = 'C:\PerformanceAnalyzer'
   $installRoot = Join-Path $applicationRoot $approvedVersion
-  $customerPackageRoot = Join-Path $applicationRoot `
-    "Packages\$approvedVersion"
-
   New-Item `
     -ItemType Directory `
     -Path $applicationRoot `
     -Force |
     Out-Null
 
-  New-Item `
-    -ItemType Directory `
-    -Path $customerPackageRoot `
-    -Force |
-    Out-Null
-
   Install-EngineerFiles -Source $engineerRoot -Destination $installRoot
-
-  Copy-Item `
-    -LiteralPath $customerZip `
-    -Destination $customerPackageRoot `
-    -Force
-
-  Copy-Item `
-    -LiteralPath $customerChecksum `
-    -Destination $customerPackageRoot `
-    -Force
 
   if (-not $SkipCopilotIntegration) {
     $packageInstaller = Join-Path $installRoot $layout.Installer
@@ -382,9 +326,7 @@ try {
   Write-Host ''
   Write-Host 'PerformanceAnalyzer installation completed.'
   Write-Host "Engineer tools: $installRoot"
-  Write-Host (
-    "Customer kit:   $customerPackageRoot\$customerPackageName"
-  )
+  Write-Host "Customer-only ZIP/checksum (download separately when needed): https://github.com/$owner/$repository/releases/tag/$tag"
   Write-Host ''
   Write-Host 'Restart GitHub Copilot CLI before using the integration.'
 }

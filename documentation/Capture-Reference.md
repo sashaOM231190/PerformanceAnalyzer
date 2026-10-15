@@ -78,13 +78,12 @@ $path = Join-Path $env:TEMP 'Install-PerformanceAnalyzer.ps1'; Invoke-WebRequest
 ```
 
 The bootstrap automatically requests administrator access, downloads and
-verifies both packages for the explicitly selected Coach version,
-installs the engineer tools, configures the Copilot integration, and retains
-the customer ZIP under:
-
-```text
-C:\PerformanceAnalyzer\Packages\<version>
-```
+verifies the engineer package for the explicitly selected Coach version,
+installs the engineer tools and configures the Copilot integration.
+It does not download/cache the customer ZIP or create a `Packages` folder.
+Download the customer-only ZIP and matching checksum from the release page
+when needed for handoff. An existing `C:\PerformanceAnalyzer\Packages` cache
+is unused; check its contents before manually deleting it.
 
 Keep `-Version 2.5.0-coach.7` in this command to select Coach. Omitting
 `-Version` uses the separate default channel in `latest-version.txt`, which
@@ -608,6 +607,7 @@ PerformanceAnalyzer\2.5.0-coach.7\
     capture_tools\
   Ai Integration\
     Integrate-Copilot.ps1
+    Remove-CopilotIntegration.ps1
     copilot_mcp_server\
     copilot_skill\
     version.txt
