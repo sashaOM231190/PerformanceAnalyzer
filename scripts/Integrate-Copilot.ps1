@@ -141,7 +141,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'Could not remove the existing PerformanceAnalyzer MCP registration.' }
     }
     & $copilot.Source mcp add performance-analyzer `
-        --env "PERFORMANCEANALYZER_ENDPOINT=$Endpoint" -- $serverDestination
+        --env "PERFORMANCEANALYZER_ENDPOINT=$Endpoint" -- $serverDestination --endpoint $Endpoint
     if ($LASTEXITCODE -ne 0) { throw 'Could not register the PerformanceAnalyzer MCP server.' }
     & $copilot.Source mcp get performance-analyzer
     if ($LASTEXITCODE -ne 0) { throw 'The MCP registration could not be verified.' }
@@ -149,6 +149,9 @@ try {
     $entry = $installed.mcpServers.PSObject.Properties['performance-analyzer']
     if ($null -eq $entry -or
         $entry.Value.command -ne $serverDestination -or
+        @($entry.Value.args).Count -ne 2 -or
+        $entry.Value.args[0] -ne '--endpoint' -or
+        $entry.Value.args[1] -ne $Endpoint -or
         $entry.Value.env.PERFORMANCEANALYZER_ENDPOINT -ne $Endpoint) {
         throw 'The registered MCP command or endpoint does not match this installation.'
     }

@@ -31,8 +31,9 @@ switch (args[1]) {
     assert.equal(args[3], "--env");
     assert.equal(args[5], "--");
     const endpoint = args[4].split("=").slice(1).join("=");
+    assert.deepEqual(args.slice(7), ["--endpoint", endpoint]);
     config.mcpServers["performance-analyzer"] = {
-      type: "local", command: args[6], args: [],
+      type: "local", command: args[6], args: args.slice(7),
       env: { PERFORMANCEANALYZER_ENDPOINT: endpoint }
     };
     break;

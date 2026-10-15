@@ -17,6 +17,9 @@ the new ZIP **and matching checksum** together. The old `start-capture.cmd`
 was removed; use the explicit capture commands below.
 For manual upgrades, extract into a clean directory: ZIP extraction does not
 remove old launchers left by an earlier kit.
+The latest refresh also fixes MCP routing when the analyzer uses a nondefault
+port: rerun the bootstrap or the refreshed integration script to repair the
+registration, then restart Copilot.
 
 Install/refresh the engineer kit under `C:\PerformanceAnalyzer\2.5.0-coach.7`.
 The installer does not download or cache the separate customer ZIP and does
@@ -137,6 +140,10 @@ Restart Copilot CLI; sign in with `/login` if needed and verify `/mcp` and
 and skill. MCP binary: `%LOCALAPPDATA%\PerformanceAnalyzer\Copilot\2.5.0-coach.7`.
 Skill: `%USERPROFILE%\.copilot\skills\performance-analyzer`.
 If `COPILOT_HOME` is set, configuration and skills use that directory instead.
+The registration passes the analyzer URL using `--endpoint`; an environment-only
+registration from an earlier package can connect to MCP while querying the
+wrong analyzer port. `get_server_status` reports MCP process readiness, not an
+analyzer API health check.
 
 ## Undo AI integration
 

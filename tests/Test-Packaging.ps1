@@ -116,7 +116,7 @@ try {
     Must-Fail { & $integration -InstallCopilot } 'WinGet exit 5'
     Remove-Item Env:\PA_PACKAGE_TEST_WINGET_FAIL
     $configPath = Join-Path $env:USERPROFILE '.copilot\mcp-config.json'
-    Write-Fixture $configPath '{"customSetting":true,"mcpServers":{"unrelated":{"type":"http","url":"https://example.invalid/mcp","tools":["*"]}}}'
+    Write-Fixture $configPath '{"customSetting":true,"mcpServers":{"performance-analyzer":{"type":"local","command":"old.exe","args":[],"env":{"PERFORMANCEANALYZER_ENDPOINT":"http://127.0.0.1:9000/"}},"unrelated":{"type":"http","url":"https://example.invalid/mcp","tools":["*"]}}}'
     $otherSkill = Join-Path $env:USERPROFILE '.copilot\skills\unrelated\SKILL.md'
     Write-Fixture $otherSkill 'unrelated skill'
     function Read-Host { param($Prompt) return 'y' }
@@ -124,6 +124,7 @@ try {
     Remove-Item Function:\Read-Host
     $config = Get-Content $configPath -Raw | ConvertFrom-Json
     Check ($config.mcpServers.'performance-analyzer'.env.PERFORMANCEANALYZER_ENDPOINT -eq 'http://127.0.0.1:9000/') 'Exact endpoint registered'
+    Check (($config.mcpServers.'performance-analyzer'.args -join ' ') -eq '--endpoint http://127.0.0.1:9000/') 'Endpoint is passed as MCP command arguments, not just an ignored environment variable'
     Check ($config.mcpServers.unrelated.url -eq 'https://example.invalid/mcp' -and $config.customSetting) 'Unrelated configuration preserved'
     $skillPath = Join-Path $env:USERPROFILE '.copilot\skills\performance-analyzer'
     Write-Fixture (Join-Path $skillPath 'stale.txt') 'stale'
@@ -165,6 +166,7 @@ try {
         & $integration -Endpoint 'http://127.0.0.1:9001/'
         $realConfig = Get-Content (Join-Path $env:COPILOT_HOME 'mcp-config.json') -Raw | ConvertFrom-Json
         Check ($realConfig.mcpServers.'performance-analyzer'.env.PERFORMANCEANALYZER_ENDPOINT -eq 'http://127.0.0.1:9001/') 'Real CLI repairs the exact endpoint in custom COPILOT_HOME'
+        Check (($realConfig.mcpServers.'performance-analyzer'.args -join ' ') -eq '--endpoint http://127.0.0.1:9001/') 'Real CLI persists executable endpoint arguments'
         Check ($null -ne $realConfig.mcpServers.PSObject.Properties['unrelated']) 'Real CLI preserves unrelated registration'
         Check (Test-Path (Join-Path $env:COPILOT_HOME 'skills\performance-analyzer\SKILL.md')) 'Custom COPILOT_HOME receives the skill'
         $env:COPILOT_HOME = Join-Path $env:USERPROFILE '.copilot'
