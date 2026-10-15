@@ -4,7 +4,9 @@ param(
     '^\d+\.\d+\.\d+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$')]
   [string]$Version,
 
-  [switch]$ValidateOnly
+  [switch]$ValidateOnly,
+  [switch]$InstallCopilot,
+  [switch]$SkipCopilotIntegration
 )
 
 Set-StrictMode -Version Latest
@@ -40,6 +42,8 @@ function Invoke-ElevatedBootstrap {
   if ($Version) {
     $arguments += @('-Version', $Version)
   }
+  if ($InstallCopilot) { $arguments += '-InstallCopilot' }
+  if ($SkipCopilotIntegration) { $arguments += '-SkipCopilotIntegration' }
 
   $process = Start-Process `
     -FilePath 'powershell.exe' `
@@ -146,6 +150,78 @@ function Assert-PackageFiles {
   }
 }
 
+function Find-TraceTool {
+  param([ValidateSet('wpr.exe', 'xperf.exe')][string]$Name)
+  $candidates = @(
+    (Join-Path $env:WINDIR "Sysnative\$Name"),
+    (Join-Path $env:WINDIR "System32\$Name")
+  )
+  $command = Get-Command $Name -CommandType Application -ErrorAction SilentlyContinue
+  if ($null -ne $command) { $candidates += $command.Source }
+  foreach ($base in @(${env:ProgramFiles(x86)}, $env:ProgramFiles)) {
+    if (-not [string]::IsNullOrWhiteSpace($base)) {
+      $candidates += Join-Path $base "Windows Kits\10\Windows Performance Toolkit\$Name"
+    }
+  }
+  $candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+    Select-Object -First 1
+}
+
+function Show-Prerequisites {
+  foreach ($name in @('wpr.exe', 'xperf.exe')) {
+    $path = Find-TraceTool $name
+    if ($path) { Write-Host "$name found: $path" }
+    else {
+      $purpose = if ($name -eq 'wpr.exe') { '-MiniFilter capture' } else { 'ETL analysis' }
+      Write-Warning "$name MISSING: required for $purpose. Install the Windows Performance Toolkit from the Windows ADK: https://learn.microsoft.com/windows-hardware/get-started/adk-install"
+    }
+  }
+}
+
+function Get-EngineerLayout {
+  param([string]$Root)
+  $modern = Test-Path -LiteralPath (Join-Path $Root 'Ai Integration') -PathType Container
+  if ($modern) {
+    $installer = 'Ai Integration\Integrate-Copilot.ps1'
+    $versionFile = 'Ai Integration\version.txt'
+    $required = @(
+      'readme.txt', 'Analyzer\PerformanceAnalyzer.exe',
+      'Analyzer\terminal_assets\xterm.js', 'Analyzer\terminal_assets\xterm.css',
+      'Analyzer\terminal_assets\copilot.svg', $installer, $versionFile,
+      'Ai Integration\copilot_mcp_server\PerformanceAnalyzer.Mcp.exe',
+      'Ai Integration\copilot_skill\SKILL.md',
+      'CaptureKit\readme.txt', 'CaptureKit\capture_tools\Capture-StorageDiagnostics.ps1',
+      'CaptureKit\capture_tools\diskspd.exe',
+      'CaptureKit\capture_tools\PerformanceAnalyzer-Minifilter.wprp'
+    )
+  }
+  else {
+    $installer = 'setup_files\install.ps1'
+    $versionFile = 'setup_files\version.txt'
+    $required = @(
+      'readme.txt', 'install.cmd', 'analyzer\PerformanceAnalyzer.exe',
+      'copilot_mcp_server\PerformanceAnalyzer.Mcp.exe', 'copilot_skill\SKILL.md',
+      $installer, $versionFile
+    )
+  }
+  Assert-PackageFiles -Root $Root -PackageName 'Engineer package' -RelativePaths $required
+  [pscustomobject]@{
+    Modern = $modern
+    Installer = $installer
+    VersionFile = $versionFile
+    Analyzer = 'Analyzer\PerformanceAnalyzer.exe'
+  }
+}
+
+function Install-EngineerFiles {
+  param([string]$Source, [string]$Destination)
+  New-Item -ItemType Directory -Path $Destination -Force | Out-Null
+  foreach ($item in Get-ChildItem -LiteralPath $Source -Force) {
+    Copy-Item -LiteralPath $item.FullName -Destination $Destination -Recurse -Force
+  }
+  Write-Host "Engineer files installed/refreshed: $Destination"
+}
+
 if (-not $ValidateOnly -and -not (Test-Administrator)) {
   Write-Host 'Administrator access is required. Opening an elevated window...'
   Invoke-ElevatedBootstrap
@@ -179,6 +255,8 @@ $customerZip = Join-Path $downloadRoot $customerPackageName
 $customerChecksum = Join-Path $downloadRoot $customerChecksumName
 $engineerZip = Join-Path $downloadRoot $engineerPackageName
 $engineerChecksum = Join-Path $downloadRoot $engineerChecksumName
+
+Show-Prerequisites
 
 try {
   New-Item -ItemType Directory -Path $downloadRoot | Out-Null
@@ -228,27 +306,15 @@ try {
     -PackageName 'Customer package' `
     -RelativePaths @(
       'readme.txt'
-      'start-capture.cmd'
       'capture_tools\Capture-StorageDiagnostics.ps1'
       'capture_tools\diskspd.exe'
       'capture_tools\PerformanceAnalyzer-Minifilter.wprp'
     )
 
-  Assert-PackageFiles `
-    -Root $engineerRoot `
-    -PackageName 'Engineer package' `
-    -RelativePaths @(
-      'readme.txt'
-      'install.cmd'
-      'analyzer\PerformanceAnalyzer.exe'
-      'copilot_mcp_server\PerformanceAnalyzer.Mcp.exe'
-      'copilot_skill\SKILL.md'
-      'setup_files\install.ps1'
-      'setup_files\version.txt'
-    )
+  $layout = Get-EngineerLayout -Root $engineerRoot
 
   $packageVersion = (
-    Get-Content (Join-Path $engineerRoot 'setup_files\version.txt') -Raw
+    Get-Content (Join-Path $engineerRoot $layout.VersionFile) -Raw
   ).Trim()
 
   if ($packageVersion -ne $approvedVersion) {
@@ -256,7 +322,11 @@ try {
   }
 
   if ($ValidateOnly) {
-    & (Join-Path $engineerRoot 'analyzer\PerformanceAnalyzer.exe') --version
+    & (Join-Path $engineerRoot $layout.Analyzer) --version
+    if ($LASTEXITCODE -ne 0) { throw 'Packaged analyzer validation failed.' }
+    if ($layout.Modern) {
+      & (Join-Path $engineerRoot $layout.Installer) -ValidateOnly
+    }
     Write-Host "PerformanceAnalyzer $approvedVersion packages are valid."
     return
   }
@@ -278,25 +348,7 @@ try {
     -Force |
     Out-Null
 
-  if (-not (Test-Path -LiteralPath $installRoot)) {
-    Move-Item `
-      -LiteralPath $engineerRoot `
-      -Destination $installRoot
-  }
-  else {
-    Assert-PackageFiles `
-      -Root $installRoot `
-      -PackageName 'Existing engineer installation' `
-      -RelativePaths @(
-        'analyzer\PerformanceAnalyzer.exe'
-        'copilot_mcp_server\PerformanceAnalyzer.Mcp.exe'
-        'copilot_skill\SKILL.md'
-        'setup_files\install.ps1'
-        'setup_files\version.txt'
-      )
-
-    Write-Host "Using existing engineer installation: $installRoot"
-  }
+  Install-EngineerFiles -Source $engineerRoot -Destination $installRoot
 
   Copy-Item `
     -LiteralPath $customerZip `
@@ -308,26 +360,23 @@ try {
     -Destination $customerPackageRoot `
     -Force
 
-  $packageInstaller = Join-Path $installRoot 'setup_files\install.ps1'
-
-  & powershell.exe `
-    -NoProfile `
-    -ExecutionPolicy Bypass `
-    -File $packageInstaller
-
-  if ($LASTEXITCODE -ne 0) {
-    throw "Copilot integration installation failed with exit code $LASTEXITCODE."
+  if (-not $SkipCopilotIntegration) {
+    $packageInstaller = Join-Path $installRoot $layout.Installer
+    $integrationArguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $packageInstaller)
+    if ($layout.Modern -and $InstallCopilot) { $integrationArguments += '-InstallCopilot' }
+    & powershell.exe @integrationArguments
+    if ($LASTEXITCODE -ne 0) {
+      throw "Copilot integration failed (exit $LASTEXITCODE). Engineer files are installed at '$installRoot'; rerun '$packageInstaller' to repair integration."
+    }
   }
+  else { Write-Warning 'AI integration was skipped; only the engineer files were installed.' }
 
   $analyzerPath = Join-Path $installRoot `
-    'analyzer\PerformanceAnalyzer.exe'
+    $layout.Analyzer
 
   & $analyzerPath --version
-
-  copilot mcp get performance-analyzer
-
   if ($LASTEXITCODE -ne 0) {
-    throw 'The MCP registration could not be verified.'
+    throw 'Installed analyzer version check failed.'
   }
 
   Write-Host ''
