@@ -5,28 +5,31 @@ and minifilter activity. Coach guides disk/volume-specific analysis.
 
 ## Download / install
 
-[Coach 2.5.0-coach.7 packages](https://github.com/sashaOM231190/PerformanceAnalyzer/releases/tag/v2.5.0-coach.7)
+[Recommended: Coach 2.5.0-coach.6 packages](https://github.com/sashaOM231190/PerformanceAnalyzer/releases/tag/v2.5.0-coach.6)
 
 | Package | Recipient |
 | --- | --- |
-| `performanceanalyzer-engineer-analysis-kit-2.5.0-coach.7.zip` | Engineer: analyzer, customer capture tools, MCP and skill |
-| `performanceanalyzer-customer-capture-kit-2.5.0-coach.7.zip` | **Share this ZIP and its `.sha256` with the customer**; no analyzer or AI components |
+| `performanceanalyzer-engineer-analysis-kit-2.5.0-coach.6.zip` | Engineer: analyzer, customer capture tools, MCP and skill |
+| `performanceanalyzer-customer-capture-kit-2.5.0-coach.6.zip` | **Share this ZIP and its `.sha256` with the customer**; no analyzer or AI components |
 
-**coach.7 was repackaged:** folder layout and ZIP checksums changed. Download
+**coach.6 is the rollback baseline and was repackaged:** ZIP checksums changed. Download
 the new ZIP **and matching checksum** together. The old `start-capture.cmd`
 was removed; use the explicit capture commands below.
 For manual upgrades, extract into a clean directory: ZIP extraction does not
 remove old launchers left by an earlier kit.
-The latest refresh also fixes MCP routing when the analyzer uses a nondefault
-port: rerun the bootstrap or the refreshed integration script to repair the
-registration, then restart Copilot.
+The analyzer retains the graph-loading correction and package-path adaptations;
+MCP and skill use the original coach.6 payloads, not coach.7 binaries.
+The integration script passes the endpoint explicitly. This rollback does not
+claim to identify or fix the remaining machine-specific MCP failure.
+Close coach.7/Coach sessions before installing; reopen the coach.6 executable
+explicitly afterward. Older installed versions are not deleted.
 
-Install/refresh the engineer kit under `C:\PerformanceAnalyzer\2.5.0-coach.7`.
+Install/refresh the engineer kit under `C:\PerformanceAnalyzer\2.5.0-coach.6`.
 The installer does not download or cache the separate customer ZIP and does
 not create a `Packages` folder:
 
 ```powershell
-$path = Join-Path $env:TEMP 'Install-PerformanceAnalyzer.ps1'; Invoke-WebRequest 'https://raw.githubusercontent.com/sashaOM231190/PerformanceAnalyzer/main/Install-PerformanceAnalyzer.ps1' -OutFile $path -UseBasicParsing; & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -Version 2.5.0-coach.7
+$path = Join-Path $env:TEMP 'Install-PerformanceAnalyzer.ps1'; Invoke-WebRequest 'https://raw.githubusercontent.com/sashaOM231190/PerformanceAnalyzer/main/Install-PerformanceAnalyzer.ps1' -OutFile $path -UseBasicParsing; & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -Version 2.5.0-coach.6
 ```
 
 The bootstrap reports `wpr.exe` and `xperf.exe` locations or missing-tool
@@ -42,17 +45,17 @@ by organizational policy. Bootstrap options:
 
 ```powershell
 # Explicit consent to install missing Copilot CLI through WinGet.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -Version 2.5.0-coach.7 -InstallCopilot
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -Version 2.5.0-coach.6 -InstallCopilot
 # Validate the engineer download/package only; do not install or change integration.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -Version 2.5.0-coach.7 -ValidateOnly
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -Version 2.5.0-coach.6 -ValidateOnly
 # Install files without configuring AI integration.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -Version 2.5.0-coach.7 -SkipCopilotIntegration
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -Version 2.5.0-coach.6 -SkipCopilotIntegration
 ```
 
 ## Installed directories
 
 ```text
-C:\PerformanceAnalyzer\2.5.0-coach.7\
+C:\PerformanceAnalyzer\2.5.0-coach.6\
   readme.txt
   Analyzer\
     PerformanceAnalyzer.exe
@@ -63,6 +66,7 @@ C:\PerformanceAnalyzer\2.5.0-coach.7\
   Ai Integration\
     Integrate-Copilot.ps1
     Remove-CopilotIntegration.ps1
+    Test-CopilotConnection.ps1
     version.txt
     copilot_mcp_server\
     copilot_skill\
@@ -77,16 +81,16 @@ and checksum directly from the release page only when sharing with a customer.
 ## Capture: run as Administrator
 
 Customer ZIP: extract to `C:\`; tools are directly under
-`C:\PerformanceAnalyzer\2.5.0-coach.7\capture_tools`.
+`C:\PerformanceAnalyzer\2.5.0-coach.6\capture_tools`.
 Engineer ZIP: tools are under `CaptureKit\capture_tools` instead.
 
 ```powershell
 # Customer machine: capture the existing problem WITH minifilter callbacks.
-Set-Location 'C:\PerformanceAnalyzer\2.5.0-coach.7\capture_tools'
+Set-Location 'C:\PerformanceAnalyzer\2.5.0-coach.6\capture_tools'
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Capture-StorageDiagnostics.ps1 -MiniFilter
 
 # Engineer machine: use the capture tools included in the combined kit.
-Set-Location 'C:\PerformanceAnalyzer\2.5.0-coach.7\CaptureKit\capture_tools'
+Set-Location 'C:\PerformanceAnalyzer\2.5.0-coach.6\CaptureKit\capture_tools'
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Capture-StorageDiagnostics.ps1 -MiniFilter
 
 # Different output location; minifilter callbacks still included.
@@ -112,8 +116,8 @@ Cloning this repository does not include the capture tools; download a ZIP.
 ## Analyze
 
 ```powershell
-& 'C:\PerformanceAnalyzer\2.5.0-coach.7\Analyzer\PerformanceAnalyzer.exe' 'C:\path\to\StorageCapture-folder'
-& 'C:\PerformanceAnalyzer\2.5.0-coach.7\Analyzer\PerformanceAnalyzer.exe' /?
+& 'C:\PerformanceAnalyzer\2.5.0-coach.6\Analyzer\PerformanceAnalyzer.exe' 'C:\path\to\StorageCapture-folder'
+& 'C:\PerformanceAnalyzer\2.5.0-coach.6\Analyzer\PerformanceAnalyzer.exe' /?
 ```
 
 Coach starts with disk number and volume, then operation and interval.
@@ -127,17 +131,17 @@ Run for the Windows account that will use Copilot; close running analyzer/Coach
 sessions before replacing files:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'C:\PerformanceAnalyzer\2.5.0-coach.7\Ai Integration\Integrate-Copilot.ps1'
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'C:\PerformanceAnalyzer\2.5.0-coach.6\Ai Integration\Integrate-Copilot.ps1'
 # Explicit WinGet consent if Copilot CLI is missing:
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'C:\PerformanceAnalyzer\2.5.0-coach.7\Ai Integration\Integrate-Copilot.ps1' -InstallCopilot
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'C:\PerformanceAnalyzer\2.5.0-coach.6\Ai Integration\Integrate-Copilot.ps1' -InstallCopilot
 # Optional custom analyzer port:
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'C:\PerformanceAnalyzer\2.5.0-coach.7\Ai Integration\Integrate-Copilot.ps1' -Endpoint 'http://127.0.0.1:9000/'
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'C:\PerformanceAnalyzer\2.5.0-coach.6\Ai Integration\Integrate-Copilot.ps1' -Endpoint 'http://127.0.0.1:9000/'
 copilot mcp get performance-analyzer
 ```
 
 Restart Copilot CLI; sign in with `/login` if needed and verify `/mcp` and
 `/skills`. The script refreshes only the PerformanceAnalyzer MCP registration
-and skill. MCP binary: `%LOCALAPPDATA%\PerformanceAnalyzer\Copilot\2.5.0-coach.7`.
+and skill. MCP binary: `%LOCALAPPDATA%\PerformanceAnalyzer\Copilot\2.5.0-coach.6`.
 Skill: `%USERPROFILE%\.copilot\skills\performance-analyzer`.
 If `COPILOT_HOME` is set, configuration and skills use that directory instead.
 The registration passes the analyzer URL using `--endpoint`; an environment-only
@@ -168,8 +172,8 @@ installed the integration; Copilot CLI does not need to be installed:
 
 ```powershell
 # Included in the engineer kit (not in customer capture_tools):
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'C:\PerformanceAnalyzer\2.5.0-coach.7\Ai Integration\Remove-CopilotIntegration.ps1' -WhatIf
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'C:\PerformanceAnalyzer\2.5.0-coach.7\Ai Integration\Remove-CopilotIntegration.ps1'
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'C:\PerformanceAnalyzer\2.5.0-coach.6\Ai Integration\Remove-CopilotIntegration.ps1' -WhatIf
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'C:\PerformanceAnalyzer\2.5.0-coach.6\Ai Integration\Remove-CopilotIntegration.ps1'
 
 # Alternatively, download the standalone script:
 $undo = Join-Path $env:TEMP 'Remove-CopilotIntegration.ps1'
@@ -199,7 +203,7 @@ Anonymous usage telemetry is enabled by default, not capture-content upload.
 To disable it:
 
 ```powershell
-& 'C:\PerformanceAnalyzer\2.5.0-coach.7\Analyzer\PerformanceAnalyzer.exe' --disable-telemetry
+& 'C:\PerformanceAnalyzer\2.5.0-coach.6\Analyzer\PerformanceAnalyzer.exe' --disable-telemetry
 ```
 
 Restart the analyzer afterward. Packages remain public until a restricted

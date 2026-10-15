@@ -3,7 +3,8 @@ param(
     [Parameter(Mandatory)][string]$PackageRoot,
     [Parameter(Mandatory)][string]$ReleaseRoot,
     [Parameter(Mandatory)][string]$LegacyReleaseRoot,
-    [string]$RealCopilot
+    [string]$RealCopilot,
+    [string]$AnalyzerSource
 )
 
 Set-StrictMode -Version Latest
@@ -11,6 +12,10 @@ $ErrorActionPreference = 'Stop'
 $repository = Split-Path -Parent $PSScriptRoot
 $bootstrap = Join-Path $repository 'Install-PerformanceAnalyzer.ps1'
 $integration = Join-Path $PackageRoot 'Ai Integration\Integrate-Copilot.ps1'
+$version = (Get-Content -LiteralPath (Join-Path $PackageRoot 'Ai Integration\version.txt') -Raw).Trim()
+if (-not $AnalyzerSource) {
+    $AnalyzerSource = Join-Path $repository 'PerformanceAnalyzer-Packaging\worktrees\coach6-analyzer\source\Show-PerfCounterDashboard.ps1'
+}
 $fixture = Join-Path $env:TEMP ('pa-packaging-test-' + [guid]::NewGuid().ToString('N'))
 $node = (Get-Command node -ErrorAction Stop).Source
 $saved = @{}
@@ -88,7 +93,7 @@ try {
     $sdkXperf = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\Windows Performance Toolkit\xperf.exe'
     Write-Fixture $sdkXperf
     Check ((Find-TraceTool xperf.exe) -eq $sdkXperf) 'SDK Xperf is found without PATH'
-    Import-Functions (Join-Path $repository 'PerformanceAnalyzer-Packaging\worktrees\coach6-analyzer\source\Show-PerfCounterDashboard.ps1') @('Get-XperfCommand')
+    Import-Functions $AnalyzerSource @('Get-XperfCommand')
     Check ((Get-XperfCommand).Source -eq $sdkXperf) 'Analyzer also resolves SDK Xperf without PATH'
     Remove-Item Function:\Get-Command
     foreach ($name in @('WINDIR', 'ProgramFiles', 'ProgramFiles(x86)')) {
@@ -133,7 +138,7 @@ try {
     Check ((Get-Content $otherSkill -Raw) -eq 'unrelated skill') 'Repair preserves unrelated skills'
     $before = Get-Content $configPath -Raw | ConvertFrom-Json
     $beforeOwn = $before.mcpServers.'performance-analyzer' | ConvertTo-Json -Depth 20 -Compress
-    $serverPath = Join-Path $env:LOCALAPPDATA 'PerformanceAnalyzer\Copilot\2.5.0-coach.7\PerformanceAnalyzer.Mcp.exe'
+    $serverPath = Join-Path $env:LOCALAPPDATA "PerformanceAnalyzer\Copilot\$version\PerformanceAnalyzer.Mcp.exe"
     $serverHash = (Get-FileHash $serverPath).Hash
     $env:PA_PACKAGE_TEST_ADD_FAIL = '1'
     Must-Fail { & $integration -Endpoint 'http://127.0.0.1:9010/' } 'Could not register'
@@ -183,7 +188,7 @@ try {
         Copy-Item -LiteralPath (Join-Path $env:PA_PACKAGE_DOWNLOAD_FIXTURE ([IO.Path]::GetFileName($Uri))) -Destination $OutFile
     }
     $env:PA_PACKAGE_DOWNLOAD_FIXTURE = $ReleaseRoot
-    & $bootstrap -Version '2.5.0-coach.7' -ValidateOnly
+    & $bootstrap -Version $version -ValidateOnly
     $isolatedInstall = Join-Path $fixture 'installed'
     $bootstrapText = Get-Content -LiteralPath $bootstrap -Raw
     $rootAssignment = '$applicationRoot = ''C:\PerformanceAnalyzer'''
@@ -192,11 +197,11 @@ try {
     $isolatedBootstrap = $bootstrapText.Replace(
         $rootAssignment, ('$applicationRoot = ''' + $isolatedInstall.Replace("'", "''") + '''')
     ).Replace($elevationGuard, 'if ($false) {')
-    Write-Fixture (Join-Path $isolatedInstall '2.5.0-coach.7\saved-capture\keep.txt') 'preserve'
-    & ([scriptblock]::Create($isolatedBootstrap)) -Version '2.5.0-coach.7' -SkipCopilotIntegration
+    Write-Fixture (Join-Path $isolatedInstall "$version\saved-capture\keep.txt") 'preserve'
+    & ([scriptblock]::Create($isolatedBootstrap)) -Version $version -SkipCopilotIntegration
     Check (-not (Test-Path -LiteralPath (Join-Path $isolatedInstall 'Packages'))) 'Installation does not create a Packages cache'
-    Check (Test-Path -LiteralPath (Join-Path $isolatedInstall '2.5.0-coach.7\Ai Integration\Remove-CopilotIntegration.ps1')) 'Installation includes the undo script'
-    Check ((Get-Content -LiteralPath (Join-Path $isolatedInstall '2.5.0-coach.7\saved-capture\keep.txt') -Raw) -eq 'preserve') 'Bootstrap preserves existing captures'
+    Check (Test-Path -LiteralPath (Join-Path $isolatedInstall "$version\Ai Integration\Remove-CopilotIntegration.ps1")) 'Installation includes the undo script'
+    Check ((Get-Content -LiteralPath (Join-Path $isolatedInstall "$version\saved-capture\keep.txt") -Raw) -eq 'preserve') 'Bootstrap preserves existing captures'
     $env:PA_PACKAGE_DOWNLOAD_FIXTURE = $LegacyReleaseRoot
     & $bootstrap -Version '2.5.0-coach.7' -ValidateOnly
     Remove-Item Function:\Invoke-WebRequest
