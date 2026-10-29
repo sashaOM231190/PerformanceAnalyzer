@@ -24,13 +24,18 @@ claim to identify or fix the remaining machine-specific MCP failure.
 Close coach.7/Coach sessions before installing; reopen the coach.6 executable
 explicitly afterward. Older installed versions are not deleted.
 
-Install/refresh the engineer kit under `C:\PerformanceAnalyzer\2.5.0-coach.6`.
+Install/refresh the latest approved engineer kit (currently `2.5.0-coach.6`)
+under `C:\PerformanceAnalyzer\<version>`.
 The installer does not download or cache the separate customer ZIP and does
 not create a `Packages` folder:
 
 ```powershell
-$path = Join-Path $env:TEMP 'Install-PerformanceAnalyzer.ps1'; Invoke-WebRequest 'https://raw.githubusercontent.com/sashaOM231190/PerformanceAnalyzer/main/Install-PerformanceAnalyzer.ps1' -OutFile $path -UseBasicParsing; & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -Version 2.5.0-coach.6
+$path = Join-Path $env:TEMP 'Install-PerformanceAnalyzer.ps1'; Invoke-WebRequest 'https://raw.githubusercontent.com/sashaOM231190/PerformanceAnalyzer/main/Install-PerformanceAnalyzer.ps1' -OutFile $path -UseBasicParsing; & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path
 ```
+
+Without `-Version`, the installer reads `latest-version.txt` from this repository.
+For future releases, update that file only after the release ZIP and matching
+checksum are available. Add `-Version 2.5.0-coach.6` to pin a specific version.
 
 The bootstrap reports `wpr.exe` and `xperf.exe` locations or missing-tool
 warnings. It checks System32/Sysnative, PATH and standard Windows Performance
@@ -45,11 +50,11 @@ by organizational policy. Bootstrap options:
 
 ```powershell
 # Explicit consent to install missing Copilot CLI through WinGet.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -Version 2.5.0-coach.6 -InstallCopilot
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -InstallCopilot
 # Validate the engineer download/package only; do not install or change integration.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -Version 2.5.0-coach.6 -ValidateOnly
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -ValidateOnly
 # Install files without configuring AI integration.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -Version 2.5.0-coach.6 -SkipCopilotIntegration
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -SkipCopilotIntegration
 ```
 
 ## Installed directories

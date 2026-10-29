@@ -71,7 +71,7 @@ function Get-ApprovedVersion {
 
   $approvedVersion = $response.Content.Trim()
 
-  if ($approvedVersion -notmatch '^\d+\.\d+\.\d+$') {
+  if ($approvedVersion -notmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$') {
     throw "Invalid version returned by $latestVersionUri"
   }
 

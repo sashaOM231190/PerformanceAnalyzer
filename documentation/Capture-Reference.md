@@ -16,8 +16,8 @@ MCP server, Copilot skill, or embedded terminal.
 
 [Download PerformanceAnalyzer Coach 2.5.0-coach.6](https://github.com/sashaOM231190/PerformanceAnalyzer/releases/tag/v2.5.0-coach.6)
 
-Use the Coach release for engineer analysis. This is a prerelease; the
-download and installation instructions below select it explicitly.
+Use the Coach release for engineer analysis. This is a prerelease and is
+currently the latest approved version selected by the installer.
 
 Release assets:
 
@@ -72,21 +72,21 @@ session-only.
 Run this command from Windows PowerShell:
 
 ```powershell
-$path = Join-Path $env:TEMP 'Install-PerformanceAnalyzer.ps1'; Invoke-WebRequest 'https://raw.githubusercontent.com/sashaOM231190/PerformanceAnalyzer/main/Install-PerformanceAnalyzer.ps1' -OutFile $path -UseBasicParsing; & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -Version 2.5.0-coach.6
+$path = Join-Path $env:TEMP 'Install-PerformanceAnalyzer.ps1'; Invoke-WebRequest 'https://raw.githubusercontent.com/sashaOM231190/PerformanceAnalyzer/main/Install-PerformanceAnalyzer.ps1' -OutFile $path -UseBasicParsing; & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path
 ```
 
 The bootstrap automatically requests administrator access, downloads and
-verifies the engineer package for the explicitly selected Coach version,
+verifies the engineer package for the latest approved version,
 installs the engineer tools and configures the Copilot integration.
 It does not download/cache the customer ZIP or create a `Packages` folder.
 Download the customer-only ZIP and matching checksum from the release page
 when needed for handoff. An existing `C:\PerformanceAnalyzer\Packages` cache
 is unused; check its contents before manually deleting it.
 
-Keep `-Version 2.5.0-coach.6` in this command to select Coach. Omitting
-`-Version` uses the separate default channel in `latest-version.txt`, which
-has not been switched to Coach. For a newer recommended Coach release,
-update the explicit version only after its release assets are available.
+Omitting `-Version` reads the latest approved version from `latest-version.txt`,
+currently `2.5.0-coach.6`. For a newer recommended release, update that file
+only after its release ZIP and matching checksum are available. Add
+`-Version 2.5.0-coach.6` when you need to pin this specific version.
 
 ## Requirements
 
