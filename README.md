@@ -57,6 +57,31 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -ValidateOnly
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -SkipCopilotIntegration
 ```
 
+### Recognizing a successful installation
+
+The screenshot below shows a completed installation of `2.5.0-coach.6`.
+Your version, user profile, and installation paths may differ.
+
+![PowerShell output showing checksum verification, installed engineer tools, registered Copilot integration, and the installation-completed message.](documentation/images/installation-success.png)
+
+| Message | What it means |
+| --- | --- |
+| `wpr.exe found` / `xperf.exe found` | The recording and trace-analysis tools were located. |
+| `Checksum verified` | The downloaded ZIP matches its published SHA-256 checksum. |
+| `Engineer files installed/refreshed` | The engineer kit was copied to the displayed installation folder. |
+| `AI integration installed/repaired for the current user` and server `Status: Enabled` | The Copilot integration was installed or refreshed and its MCP server was registered for this user. |
+| `PerformanceAnalyzer installation completed.` | The installer finished successfully. |
+
+The screenshot also shows a managed Browser activation timeout. In this example,
+the bundled Browser was omitted and installation continued to completion.
+Installation and server registration do not, by themselves, confirm end-to-end
+Copilot connectivity.
+
+**After installation:** restart GitHub Copilot CLI, sign in with `/login` if
+needed, and check `/mcp` and `/skills` for the `performance-analyzer` server
+and skill. The customer-only ZIP and checksum are downloaded separately when
+needed for a customer capture.
+
 ## Installed directories
 
 ```text
