@@ -61,6 +61,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path -SkipCopilotIntegr
 
 The screenshot below shows a completed installation of `2.5.0-coach.6`.
 Your version, user profile, and installation paths may differ.
+The username is replaced with `<dummy>` for privacy; it is not a literal folder name.
 
 ![PowerShell output showing checksum verification, installed engineer tools, registered Copilot integration, and the installation-completed message.](documentation/images/installation-success.png)
 
